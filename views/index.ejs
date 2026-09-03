@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title><%= sidebar_info.name %></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/ko.js"></script>
+    
+    <style>
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none; margin: 0;
+        }
+        input[type="number"] { -moz-appearance: textfield; }
+        
+        .fc-day-sun .fc-daygrid-day-number, .fc-day-sun a { color: #ef4444 !important; font-weight: bold; }
+        .fc-day-sat .fc-daygrid-day-number, .fc-day-sat a { color: #3b82f6 !important; font-weight: bold; }
+        .is-holiday .fc-daygrid-day-number, .is-holiday a { color: #ef4444 !important; font-weight: bold; }
+        .fc-daygrid-day-number { font-weight: 800 !important; font-size: 1.1rem; text-decoration: none !important; }
+        
+        /* 캘린더 상단 연/월 형식 변경을 위해 기본 타이틀 폰트 조절 */
+        .fc-toolbar-title { font-weight: 800 !important; }
+
+        /* 날짜 픽커 커스텀: 배경색, 괄호, 외곽선, 캘린더 아이콘 모두 제거 */
+        .main-date-picker {
+            background: transparent !important;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+            color: #1f2937 !important; 
+            font-weight: 800 !important;
+            font-size: 1.5rem !important; 
+            cursor: pointer !important;
+            text-align: center;
+            width: 170px;
+            caret-color: transparent;
+        }
+        .main-date-picker:focus, .main-date-picker:active {
+            background: transparent !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+        .main-date-picker::selection {
+            background: transparent;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+    <% if (page === 'login') { %>
+    <div class="flex items-center justify-center h-screen bg-gray-100">
+        <div class="bg-white p-8 rounded-2xl shadow-xl w-96">
+            <div class="flex justify-center mb-6 border-b border-gray-200">
+                <button onclick="switchTab('login')" id="tab-login" class="flex-1 pb-3 text-center font-bold text-gray-900 border-b-2 border-gray-900">로그인</button>
+                <button onclick="switchTab('signup')" id="tab-signup" class="flex-1 pb-3 text-center font-bold text-gray-400 hover:text-gray-900 border-b-2 border-transparent">회원가입</button>
+            </div>
+            
+            <form id="form-login" action="/login" method="post" class="space-y-4">
+                <div>
+                    <input type="text" name="emp_id" placeholder="사번" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
+                </div>
+                <div>
+                    <input type="password" name="emp_pw" placeholder="비밀번호" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
+                </div>
+                <button type="submit" class="w-full bg-gray-900 text-white p-2.5 rounded-lg hover:bg-black font-medium transition">로그인</button>
+                <div class="text-right mt-2">
+                    <button type="button" onclick="switchTab('reset')" class="text-xs text-gray-500 hover:text-gray-900 underline">비밀번호를 잊으셨나요?</button>
+                </div>
+            </form>
+
+            <form id="form-signup" action="/signup" method="post" class="space-y-4 hidden" onsubmit="return validateSignup(event)">
+                <input type="hidden" id="id-checked" value="false">
+                <div>
+                    <input type="text" name="name" placeholder="이름" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
+                </div>
+                <div class="flex space-x-2">
+                    <input type="text" id="signup-emp-id" name="emp_id" placeholder="사번 (5~6자리 숫자)" required class="flex-1 border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50" onchange="document.getElementById('id-checked').value='false'">
+                    <button type="button" onclick="checkDuplicateId()" class="bg-gray-200 text-gray-700 px-4 rounded-lg font-bold hover:bg-gray-300 transition shrink-0 whitespace-nowrap text-sm">중복확인</button>
+                </div>
+                <div>
+                    <input type="password" id="signup-pw" name="emp_pw" placeholder="비밀번호" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
+                </div>
+                <div>
+                    <input type="password" id="signup-pw-confirm" placeholder="비밀번호 확인" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
+                </div>
+                <button type="submit" class="w-full bg-blue-600 text-white p-2.5 rounded-lg hover:bg-blue-700 font-medium transition">가입하기</button>
+            </form>
+
+            <form id="form-reset" action="/reset_pw_request" method="post" class="space-y-4 hidden">
+                <p class="text-xs text-gray-500 mb-4 text-center">이름과 사번을 입력하면 비밀번호가<br><span class="font-bold text-red-500">new1234@</span> 로 초기화됩니다.</p>
+                <div>
+                    <input type="text" name="name" placeholder="이름" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
+                </div>
+                <div>
+                    <input type="text" name="emp_id" placeholder="사번" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
+                </div>
+                <button type="submit" class="w-full bg-red-500 text-white p-2.5 rounded-lg hover:bg-red-600 font-medium transition">비밀번호 초기화</button>
+                <button type="button" onclick="switchTab('login')" class="w-full mt-2 text-sm text-gray-500 hover:text-gray-900 transition">뒤로가기</button>
+            </form>
+        </div>
+    </div>
+    <script>
+        function switchTab(tab) {
+            document.getElementById('form-login').classList.add('hidden');
+            document.getElementById('form-signup').classList.add('hidden');
+            document.getElementById('form-reset').classList.add('hidden');
+            
+            document.getElementById('tab-login').className = 'flex-1 pb-3 text-center font-bold text-gray-400 hover:text-gray-900 border-b-2 border-transparent';
+            document.getElementById('tab-signup').className = 'flex-1 pb-3 text-center font-bold text-gray-400 hover:text-gray-900 border-b-2 border-transparent';
+            
+            if (tab === 'login') {
+                document.getElementById('form-login').classList.remove('hidden');
+                document.getElementById('tab-login').className = 'flex-1 pb-3 text-center font-bold text-gray-900 border-b-2 border-gray-900';
+            } else if (tab === 'signup') {
+                document.getElementById('form-signup').classList.remove('hidden');
+                document.getElementById('tab-signup').className = 'flex-1 pb-3 text-center font-bold text-gray-900 border-b-2 border-gray-900';
+            } else if (tab === 'reset') {
+                document.getElementById('form-reset').classList.remove('hidden');
+            }
+        }
+
+        async function checkDuplicateId() {
+            const emp_id = document.getElementById('signup-emp-id').value;
+            if(!/^\d{5,6}$/.test(emp_id)) {
+                alert('사번을 확인해 주세요.');
+                return;
+            }
+            const res = await fetch('/api/check_id', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({emp_id: emp_id})
+            });
+            const data = await res.json();
+            if(data.exists) {
+                alert('이미 사용중인 사번입니다.');
+                document.getElementById('id-checked').value = 'false';
+            } else {
+                alert('사용 가능한 사번입니다.');
+                document.getElementById('id-checked').value = 'true';
+            }
+        }
+
+        function validateSignup(e) {
+            const emp_id = document.getElementById('signup-emp-id').value;
+            const checked = document.getElementById('id-checked').value;
+            const pw1 = document.getElementById('signup-pw').value;
+            const pw2 = document.getElementById('signup-pw-confirm').value;
+
+            if(!/^\d{5,6}$/.test(emp_id)) {
+                alert('사번을 확인해 주세요.');
+                e.preventDefault(); return false;
+            }
+            if(checked !== 'true') {
+                alert('사번 중복확인을 해주세요.');
+                e.preventDefault(); return false;
+            }
+            if(pw1 !== pw2) {
+                alert('비밀번호가 일치하지 않습니다.');
+                e.preventDefault(); return false;
+            }
+            return true;
+        }
+    </script>
+    
+    <% } else { %>
+    <div class="flex h-screen overflow-hidden">
+        <!-- 사이드바 -->
+        <div class="w-64 bg-white border-r flex flex-col justify-between shrink-0">
+            <div>
+                <div class="p-6 flex items-center justify-between border-b border-gray-100 group">
+                    <div class="flex items-center space-x-3 overflow-hidden">
+                        <% if (sidebar_info.logo_url) { %>
+                            <img src="<%= sidebar_info.logo_url %>" class="w-8 h-8 rounded object-cover">
+                        <% } else { %>
+                            <div class="w-8 h-8 bg-gray-900 text-white flex items-center justify-center rounded font-bold text-sm shrink-0">복</div>
+                        <% } %>
+                        <span class="font-bold text-lg truncate" title="<%= sidebar_info.name %>"><%= sidebar_info.name %></span>
+                    </div>
+                    <% if (user && user.is_admin) { %>
+                    <button onclick="document.getElementById('sidebar-settings-modal').classList.remove('hidden')" class="text-gray-300 hover:text-gray-700 transition" title="사이드바 설정">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" /></svg>
+                    </button>
+                    <% } %>
+                </div>
+                <nav class="mt-6 px-4 space-y-2">
+                    <a href="/main" class="block py-2.5 px-4 rounded transition font-medium <% if (page === 'main') { %>bg-gray-100 font-bold text-black border-2 border-gray-900 shadow-sm<% } else { %>hover:bg-gray-50 text-gray-600<% } %>">복무 현황</a>
+                    <a href="/calendar" class="block py-2.5 px-4 rounded transition font-medium <% if (page === 'calendar') { %>bg-gray-100 font-bold text-black border-2 border-gray-900 shadow-sm<% } else { %>hover:bg-gray-50 text-gray-600<% } %>">캘린더</a>
+                    <a href="/leave_status" class="block py-2.5 px-4 rounded transition font-medium <% if (page === 'leave') { %>bg-gray-100 font-bold text-black border-2 border-gray-900 shadow-sm<% } else { %>hover:bg-gray-50 text-gray-600<% } %>">연차 잔여 현황</a>
+                    
+                    <% if (user && user.is_admin) { %>
+                    <hr class="my-4 border-gray-200">
+                    <p class="px-4 text-xs font-bold text-gray-400 mb-2 tracking-wider">ADMINISTRATION</p>
+                    <a href="/admin" class="block py-2.5 px-4 rounded transition font-medium <% if (page === 'admin') { %>bg-gray-100 font-bold text-black border-2 border-gray-900 shadow-sm<% } else { %>hover:bg-gray-50 text-gray-600<% } %>">팀원 ID 관리</a>
+                    <% } %>
+                </nav>
+            </div>
+            
+            <div class="p-4 border-t border-gray-200 bg-gray-50">
+                <div class="flex justify-between items-center w-full">
+                    <div class="flex items-center space-x-3">
+                        <% if (user && user.profile_img) { %>
+                            <img src="<%= user.profile_img %>" class="w-8 h-8 rounded-full object-cover border border-gray-300">
+                        <% } else { %>
+                            <div class="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-sm font-bold"><%= user.name[0] %></div>
+                        <% } %>
+                        <div>
+                            <p class="font-bold text-sm"><%= user.name %></p>
+                            <p class="text-xs text-gray-500"><% if (user && user.is_admin) { %>관리자<% } else { %>팀원<% } %></p>
+                        </div>
+                    </div>
+                    <div class="flex items-center">
+                        <button onclick="document.getElementById('profile-settings-modal').classList.remove('hidden')" class="text-gray-400 hover:text-gray-900 transition mr-3" title="계정 정보 수정">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" /></svg>
+                        </button>
+                        <a href="/logout" class="text-gray-400 hover:text-gray-900 text-sm font-bold">로그아웃</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto">
+            <% if (page === 'main') { %>
+            <header class="bg-white p-4 border-b flex justify-center items-center space-x-4">
+                <a href="/main?date=<%= prev_date %>" class="text-gray-400 hover:text-black transition" title="이전 날">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
+                </a>
+                <input type="text" id="main-date-picker" value="<%= current_date %>" readonly class="main-date-picker">
+                <a href="/main?date=<%= next_date %>" class="text-gray-400 hover:text-black transition" title="다음 날">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                </a>
+            </header>
+            
+            <main class="p-8 max-w-6xl mx-auto">
+                <div class="flex justify-between items-end mb-8">
+                    <div>
+                        <h1 class="text-3xl font-extrabold text-gray-900">복무 현황</h1>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-4 gap-4 mb-8">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                        <p class="text-xs text-gray-500 mb-2 font-medium">전체 팀원</p>
+                        <p class="text-2xl font-bold"><%= total_members %>명</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                        <p class="text-xs text-gray-500 mb-2 font-medium">근무 인원</p>
+                        <p class="text-2xl font-bold text-green-600"><%= working_cnt %>명</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                        <p class="text-xs text-gray-500 mb-2 font-medium">휴가 인원</p>
+                        <p class="text-2xl font-bold text-orange-500"><%= leave_cnt %>명</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                        <p class="text-xs text-gray-500 mb-2 font-medium">출장 인원</p>
+                        <p class="text-2xl font-bold text-blue-600"><%= trip_cnt %>명</p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-4 gap-4 mb-8">
+                    <% team_status.forEach(function(item) { %>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col h-full">
+                        <div class="flex justify-between items-start mb-6">
+                            <div class="flex items-center space-x-3">
+                                <% if (item.profile_img) { %>
+                                    <img src="<%= item.profile_img %>" class="w-10 h-10 rounded-full object-cover border border-gray-200">
+                                <% } else { %>
+                                    <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-700 text-lg">
+                                        <%= item.name[0] %>
+                                    </div>
+                                <% } %>
+                                <div>
+                                    <p class="font-bold text-gray-900"><%= item.name %></p>
+                                </div>
+                            </div>
+                            <span class="px-2.5 py-1 text-xs font-bold rounded-md 
+                                <% if (item.status === '정상근무') { %>bg-green-50 text-green-600 border border-green-100
+                                <% } else if (item.status === '휴가') { %>bg-orange-50 text-orange-600 border border-orange-100
+                                <% } else if (item.status === '출장') { %>bg-blue-50 text-blue-600 border border-blue-100
+                                <% } else { %>bg-gray-50 text-gray-600 border border-gray-100<% } %>">
+                                <%= item.status %>
+                            </span>
+                        </div>
+                        <div class="mt-auto border-t border-gray-50 pt-4">
+                            <p class="text-sm font-medium text-gray-700">사유: <%= item.reason %></p>
+                        </div>
+                    </div>
+                    <% }) %>
+                </div>
+            </main>
+            <script>
+                flatpickr("#main-date-picker", {
+                    locale: "ko",
+                    dateFormat: "Y-m-d",
+                    disableMobile: "true",
+                    onChange: function(selectedDates, dateStr, instance) {
+                        window.location.href = '/main?date=' + dateStr;
+                    }
+                });
+            </script>
+
+            <% } else if (page === 'calendar') { %>
+            <header class="bg-white p-4 border-b flex justify-center items-center">
+                <span class="text-gray-800 font-bold text-xl">복무 캘린더</span>
+            </header>
+            
+            <main class="p-8 max-w-6xl mx-auto">
+                <div class="flex justify-between items-end mb-8">
+                    <div>
+                        <h1 class="text-3xl font-extrabold text-gray-900">캘린더</h1>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <div id="calendar"></div>
+                </div>
+
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        var calendarEl = document.getElementById('calendar');
+                        var calendar = new FullCalendar.Calendar(calendarEl, {
+                            initialView: 'dayGridMonth',
+                            height: 'auto',
+                            titleFormat: function(date) {
+                                return date.date.year + '.' + String(date.date.month + 1).padStart(2, '0');
+                            },
+                            events: [
+                                <% records.forEach(function(r) { %>
+                                {
+                                    id: '<%= r.id %>',
+                                    title: '<%= r.name %> <%= r.reason %>', 
+                                    start: '<%= r.start_date %>',
+                                    end: '<%= r.end_date_fc %>', 
+                                    color: getColor('<%= r.reason %>')
+                                },
+                                <% }) %>
+                            ],
+                            dateClick: function(info) {
+                                document.getElementById('modal-start-date')._flatpickr.setDate(info.dateStr);
+                                document.getElementById('modal-end-date')._flatpickr.setDate(info.dateStr);
+                                document.getElementById('modal').classList.remove('hidden');
+                            },
+                            eventClick: function(info) {
+                                if(confirm("선택한 날짜의 복무를 취소 할까요?")) {
+                                    window.location.href = '/delete/' + info.event.id;
+                                }
+                            },
+                            dayCellDidMount: function(arg) {
+                                let d = arg.date;
+                                let dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+                                
+                                const holidays = [
+                                    '2026-01-01', '2026-02-16', '2026-02-17', '2026-02-18', 
+                                    '2026-03-01', '2026-03-02', '2026-05-05', '2026-05-24', 
+                                    '2026-05-25', '2026-06-06', '2026-08-15', '2026-08-17', 
+                                    '2026-09-24', '2026-09-25', '2026-09-26', '2026-10-03', 
+                                    '2026-10-09', '2026-12-25'
+                                ];
+                                
+                                if(holidays.includes(dateStr)) {
+                                    arg.el.classList.add('is-holiday');
+                                }
+                            }
+                        });
+                        calendar.render();
+                    });
+
+                    function getColor(reason) {
+                        if (reason.includes('반차') || reason.includes('휴가') || reason === '연차' || reason === '공가') return '#f97316';
+                        if (reason === '출장') return '#3b82f6';
+                        return '#10b981';
+                    }
+                </script>
+            </main>
+
+            <% } else if (page === 'leave') { %>
+            <header class="bg-white p-4 border-b flex justify-center items-center">
+                <span class="text-gray-800 font-bold text-xl">연차 잔여 현황</span>
+            </header>
+            
+            <main class="p-8 max-w-6xl mx-auto">
+                <div class="flex justify-between items-end mb-8">
+                    <div>
+                        <h1 class="text-3xl font-extrabold text-gray-900">연차 현황</h1>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 border-b border-gray-100">
+                                <th class="p-4 font-bold text-gray-700">이름</th>
+                                <th class="p-4 font-bold text-gray-700">부여된 연차</th>
+                                <th class="p-4 font-bold text-gray-700">사용한 연차</th>
+                                <th class="p-4 font-bold text-gray-700">잔여 연차</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% for (let eid in leave_data) { let l = leave_data[eid]; %>
+                            <tr class="border-b border-gray-50 hover:bg-gray-50 transition">
+                                <td class="p-4 font-medium"><%= l.name %></td>
+                                <td class="p-4">
+                                    <% if (user && user.is_admin) { %>
+                                    <form action="/update_leave" method="post" class="flex items-center space-x-2">
+                                        <input type="hidden" name="emp_id" value="<%= eid %>">
+                                        <input type="number" name="granted" value="<%= l.granted %>" class="w-20 border border-gray-300 rounded p-1.5 text-center focus:border-black outline-none" step="0.5">
+                                        <button type="submit" class="text-sm bg-gray-200 hover:bg-gray-300 px-3 py-1.5 rounded font-medium transition">수정</button>
+                                    </form>
+                                    <% } else { %>
+                                    <span class="p-2"><%= l.granted %></span>
+                                    <% } %>
+                                </td>
+                                <td class="p-4 font-medium text-gray-600"><%= l.used %></td>
+                                <td class="p-4 font-bold text-blue-600 text-lg"><%= l.remaining %></td>
+                            </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </main>
+            
+            <% } else if (page === 'admin') { %>
+            <header class="bg-white p-4 border-b flex justify-center items-center">
+                <span class="text-gray-800 font-bold text-xl">팀원 ID 관리</span>
+            </header>
+            
+            <main class="p-8 max-w-6xl mx-auto">
+                <div class="flex justify-between items-end mb-8">
+                    <div>
+                        <h1 class="text-3xl font-extrabold text-gray-900">ID 관리</h1>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 border-b border-gray-100">
+                                <th class="p-4 font-bold text-gray-700">사번</th>
+                                <th class="p-4 font-bold text-gray-700">이름</th>
+                                <th class="p-4 font-bold text-gray-700">권한</th>
+                                <th class="p-4 font-bold text-gray-700">비밀번호 관리</th>
+                                <th class="p-4 font-bold text-gray-700">계정 삭제</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% for (let eid in users) { let u = users[eid]; %>
+                            <tr class="border-b border-gray-50 hover:bg-gray-50 transition">
+                                <td class="p-4 font-medium"><%= eid %></td>
+                                <td class="p-4 font-bold"><%= u.name %></td>
+                                <td class="p-4"><% if (u.is_admin) { %><span class="text-blue-600 font-bold">관리자</span><% } else { %>팀원<% } %></td>
+                                <td class="p-4">
+                                    <div class="flex space-x-2">
+                                        <form action="/admin/action" method="post" onsubmit="return confirm('비밀번호를 [new1234@]로 초기화 할까?');">
+                                            <input type="hidden" name="action" value="reset">
+                                            <input type="hidden" name="emp_id" value="<%= eid %>">
+                                            <button type="submit" class="text-xs bg-orange-100 text-orange-700 px-3 py-1.5 rounded font-bold hover:bg-orange-200">초기화</button>
+                                        </form>
+                                        <button onclick="openPwModal('<%= eid %>', '<%= u.name %>')" class="text-xs bg-gray-100 text-gray-700 px-3 py-1.5 rounded font-bold hover:bg-gray-200">직접 변경</button>
+                                    </div>
+                                </td>
+                                <td class="p-4">
+                                    <% if (!u.is_admin) { %>
+                                    <form action="/admin/action" method="post" onsubmit="return confirm('<%= eid %> 삭제 하시겠습니까?');">
+                                        <input type="hidden" name="action" value="delete">
+                                        <input type="hidden" name="emp_id" value="<%= eid %>">
+                                        <button type="submit" class="text-xs bg-red-100 text-red-700 px-3 py-1.5 rounded font-bold hover:bg-red-200">삭제</button>
+                                    </form>
+                                    <% } else { %>
+                                    <span class="text-xs text-gray-400">삭제 불가</span>
+                                    <% } %>
+                                </td>
+                            </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </main>
+            
+            <!-- 관리자 PW 직접 변경 모달 -->
+            <div id="admin-pw-modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+                <div class="bg-white p-8 rounded-2xl shadow-2xl w-[400px]">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold text-gray-900"><span id="pw-modal-name"></span> 비밀번호 변경</h3>
+                        <button onclick="document.getElementById('admin-pw-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-900 font-bold text-xl">✕</button>
+                    </div>
+                    <form action="/admin/action" method="post" class="space-y-4">
+                        <input type="hidden" name="action" value="change_pw">
+                        <input type="hidden" name="emp_id" id="pw-modal-eid">
+                        <div>
+                            <input type="text" name="new_pw" placeholder="새 비밀번호 입력" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black">
+                        </div>
+                        <div class="flex justify-end space-x-2 pt-4">
+                            <button type="button" onclick="document.getElementById('admin-pw-modal').classList.add('hidden')" class="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50">취소</button>
+                            <button type="submit" class="px-5 py-2.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-black">변경하기</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <script>
+                function openPwModal(eid, name) {
+                    document.getElementById('pw-modal-eid').value = eid;
+                    document.getElementById('pw-modal-name').innerText = name;
+                    document.getElementById('admin-pw-modal').classList.remove('hidden');
+                }
+            </script>
+            <% } %>
+
+            <!-- 복무 입력 모달 -->
+            <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+                <div class="bg-white p-8 rounded-2xl shadow-2xl w-[450px]">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold text-gray-900">복무(부재) 기록 등록</h3>
+                        <button onclick="document.getElementById('modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-900 font-bold text-xl">✕</button>
+                    </div>
+                    
+                    <form action="/submit" method="post" class="space-y-5">
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">대상 팀원</label>
+                            <select name="member" class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
+                                <% if (user && user.is_admin) { %>
+                                    <% team_members.forEach(function(m) { %>
+                                        <option value="<%= m %>" <% if (m === user.name) { %>selected<% } %>><%= m %></option>
+                                    <% }) %>
+                                <% } else { %>
+                                    <option value="<%= user.name %>" selected><%= user.name %> (본인)</option>
+                                <% } %>
+                            </select>
+                            <% if (user && !user.is_admin) { %>
+                            <p class="text-xs text-gray-400 mt-1">* 일반 직원은 본인의 복무만 등록 가능해.</p>
+                            <% } %>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">부재 사유</label>
+                            <select name="reason" class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
+                                <option value="연차">연차</option>
+                                <option value="오전반차">오전반차</option>
+                                <option value="오후반차">오후반차</option>
+                                <option value="공가">공가</option>
+                                <option value="장기근속휴가">장기근속휴가</option>
+                                <option value="청원휴가">청원휴가</option>
+                                <option value="출장">출장</option>
+                            </select>
+                        </div>
+                        <div class="flex space-x-4">
+                            <div class="flex-1">
+                                <label class="block text-sm font-bold text-gray-700 mb-2">시작 일자</label>
+                                <input type="text" id="modal-start-date" name="start_date" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-white flatpickr-input">
+                            </div>
+                            <div class="flex-1">
+                                <label class="block text-sm font-bold text-gray-700 mb-2">종료 일자</label>
+                                <input type="text" id="modal-end-date" name="end_date" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-white flatpickr-input">
+                            </div>
+                        </div>
+                        <div class="flex justify-end space-x-2 pt-4 border-t border-gray-100">
+                            <button type="button" onclick="document.getElementById('modal').classList.add('hidden')" class="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50">취소</button>
+                            <button type="submit" class="px-5 py-2.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-black">등록하기</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <script>
+                if(document.getElementById("modal-start-date")) {
+                    flatpickr("#modal-start-date", { locale: "ko", dateFormat: "Y-m-d" });
+                    flatpickr("#modal-end-date", { locale: "ko", dateFormat: "Y-m-d" });
+                }
+            </script>
+            
+            <!-- 계정 설정 모달 (팀원 프로필 및 비밀번호 수정) -->
+            <div id="profile-settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+                <div class="bg-white p-8 rounded-2xl shadow-2xl w-[400px]">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold text-gray-900">계정 정보 수정</h3>
+                        <button onclick="closeProfileModal()" class="text-gray-400 hover:text-gray-900 font-bold text-xl">✕</button>
+                    </div>
+                    <!-- 중요: 파일 업로드 충돌 방지를 위해 enctype 제거하고 base64 히든 필드로 변환 -->
+                    <form id="profile-settings-form" action="/update_profile" method="post" class="space-y-5">
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">사번 (수정불가)</label>
+                            <input type="text" value="<%= user.emp_id %>" readonly class="w-full border border-gray-300 p-2.5 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">프로필 사진 등록</label>
+                            <input type="file" id="profile_img_file" accept="image/*" onchange="convertImage(this, 'profile_img_base64')" class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black text-sm bg-gray-50">
+                            <input type="hidden" id="profile_img_base64" name="profile_img_base64">
+                            
+                            <label class="flex items-center space-x-2 cursor-pointer mt-3">
+                                <input type="checkbox" name="reset_profile_img" value="yes" class="w-4 h-4 text-gray-900 border-gray-300 rounded focus:ring-gray-900">
+                                <span class="text-sm text-gray-600 font-medium">기본 이미지로 변경</span>
+                            </label>
+                        </div>
+                        <div class="border-t border-gray-100 pt-4">
+                            <label class="block text-sm font-bold text-gray-700 mb-2">기존 비밀번호</label>
+                            <input type="password" name="current_pw" placeholder="비밀번호를 변경할 경우 입력" class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50 mb-3">
+                            <label class="block text-sm font-bold text-gray-700 mb-2">바꿀 비밀번호</label>
+                            <input type="password" name="new_pw" placeholder="새 비밀번호 입력" class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50 mb-3">
+                            <label class="block text-sm font-bold text-gray-700 mb-2">바꿀 비밀번호 확인</label>
+                            <input type="password" name="confirm_pw" placeholder="새 비밀번호 다시 입력" class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
+                        </div>
+                        <div class="flex justify-end space-x-2 pt-4 border-t border-gray-100">
+                            <button type="button" onclick="closeProfileModal()" class="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50">취소</button>
+                            <button type="submit" class="px-5 py-2.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-black">수정하기</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <script>
+                function convertImage(input, hiddenId) {
+                    if (input.files && input.files[0]) {
+                        var reader = new FileReader();
+                        reader.onload = function (e) {
+                            document.getElementById(hiddenId).value = e.target.result;
+                        };
+                        reader.readAsDataURL(input.files[0]);
+                    }
+                }
+                
+                function closeProfileModal() {
+                    document.getElementById('profile-settings-modal').classList.add('hidden');
+                    document.getElementById('profile-settings-form').reset();
+                    document.getElementById('profile_img_base64').value = '';
+                }
+            </script>
+
+            <!-- 사이드바 설정 모달 (관리자용) -->
+            <% if (user && user.is_admin) { %>
+            <div id="sidebar-settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+                <div class="bg-white p-8 rounded-2xl shadow-2xl w-[400px]">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold text-gray-900">사이드바 설정</h3>
+                        <button onclick="document.getElementById('sidebar-settings-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-900 font-bold text-xl">✕</button>
+                    </div>
+                    <form id="sidebar-settings-form" action="/update_sidebar" method="post" class="space-y-5">
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">팀 이름 변경</label>
+                            <input type="text" name="team_name" value="<%= sidebar_info.name %>" class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">로고 이미지 업로드</label>
+                            <input type="file" id="logo_file" accept="image/*" onchange="convertImage(this, 'logo_base64')" class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black text-sm bg-gray-50">
+                            <input type="hidden" id="logo_base64" name="logo_base64">
+                            
+                            <label class="flex items-center space-x-2 cursor-pointer mt-3">
+                                <input type="checkbox" name="reset_logo" value="yes" class="w-4 h-4 text-gray-900 border-gray-300 rounded focus:ring-gray-900">
+                                <span class="text-sm text-gray-600 font-medium">기본 로고로 변경</span>
+                            </label>
+                        </div>
+                        <div class="flex justify-end space-x-2 pt-4 border-t border-gray-100">
+                            <button type="button" onclick="closeSidebarModal()" class="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50">취소</button>
+                            <button type="submit" class="px-5 py-2.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-black">저장하기</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <script>
+                function closeSidebarModal() {
+                    document.getElementById('sidebar-settings-modal').classList.add('hidden');
+                    document.getElementById('sidebar-settings-form').reset();
+                    document.getElementById('logo_base64').value = '';
+                }
+            </script>
+            <% } %>
+            
+        </div>
+    </div>
+    <% } %> <!-- End of if page == 'login' -->
+</body>
+</html>
