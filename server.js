@@ -29,7 +29,7 @@ let db = {
 };
 let record_id_counter = 1;
 
-// [V11/V12] 2026년 기준 대한민국 완벽한 공휴일 + 대체공휴일 + 지방선거 반영
+// [V13] 2026년 기준 대한민국 완벽한 공휴일 + 대체공휴일 + 지방선거 반영
 const holidays = [
     '2026-01-01', // 신정
     '2026-02-16', '2026-02-17', '2026-02-18', // 설날
@@ -298,7 +298,7 @@ app.get('/calendar', (req, res) => {
             name: r.name,
             reason: r.reason,
             start_date: r.start_date,
-            end_date: r.end_date, // 원본 end_date 유지
+            end_date: r.end_date,
             end_date_fc: endDateFcStr
         };
     });
@@ -329,7 +329,6 @@ app.post('/submit', (req, res) => {
 
     let editIds = record_ids ? record_ids.split(',').map(id => parseInt(id)) : [];
 
-    // 중복 검증 (수정 중인 본인 ID들은 제외하고 검사)
     let hasOverlap = db.records.some(r => {
         if (editIds.includes(r.id)) return false; 
         return r.name === member && (start_date <= r.end_date && end_date >= r.start_date);
@@ -339,7 +338,6 @@ app.post('/submit', (req, res) => {
         return res.send("<script>alert('해당 일자에 등록된 복무가 있습니다.'); history.back();</script>");
     }
 
-    // 수정 모드인 경우 기존 ID 데이터 삭제
     if (editIds.length > 0) {
         db.records = db.records.filter(r => !editIds.includes(r.id));
     }

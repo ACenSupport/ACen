@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title><%= sidebar_info.name %></title>
-    <!-- 네이버 나눔스퀘어 폰트 추가 -->
+    <!-- 나눔스퀘어 폰트 -->
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/gh/moonspam/NanumSquare@2.0/nanumsquare.css">
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -11,6 +11,15 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/ko.js"></script>
+
+    <script>
+        // [V13] 서버에서 넘겨받은 holidays 배열을 글로벌 변수로 선언
+        const globalHolidays = [
+            <% if (typeof holidays !== 'undefined') { %>
+                <% holidays.forEach(function(h) { %>'<%= h %>',<% }) %>
+            <% } %>
+        ];
+    </script>
     
     <script>
         function switchTab(tab) {
@@ -84,9 +93,10 @@
         }
         input[type="number"] { -moz-appearance: textfield; }
         
-        .fc-day-sun .fc-daygrid-day-number, .fc-day-sun a { color: #ef4444 !important; font-weight: bold; }
-        .fc-day-sat .fc-daygrid-day-number, .fc-day-sat a { color: #3b82f6 !important; font-weight: bold; }
-        .is-holiday .fc-daygrid-day-number, .is-holiday a { color: #ef4444 !important; font-weight: bold; }
+        /* [V13] 일자 글씨만 빨간색/파란색으로 만들기 위해 선택자 수정 */
+        .fc-day-sun .fc-daygrid-day-number { color: #ef4444 !important; font-weight: bold; }
+        .fc-day-sat .fc-daygrid-day-number { color: #3b82f6 !important; font-weight: bold; }
+        .is-holiday .fc-daygrid-day-number { color: #ef4444 !important; font-weight: bold; }
         .fc-daygrid-day-number { font-weight: 800 !important; font-size: 1.1rem; text-decoration: none !important; }
         
         .fc-toolbar-title { font-weight: 800 !important; transition: color 0.2s; }
@@ -299,15 +309,33 @@
                     <% }) %>
                 </div>
             </main>
+            
             <script>
-                flatpickr("#main-date-picker", {
+                // [V13] Flatpickr 공통 설정 (대체공휴일 포함 빨간색/파란색 처리)
+                const fpConfigMain = {
                     locale: "ko",
                     dateFormat: "Y-m-d",
-                    disableMobile: "true",
-                    onChange: function(selectedDates, dateStr, instance) {
-                        window.location.href = '/main?date=' + dateStr;
+                    onDayCreate: function(dObj, dStr, fp, dayElem) {
+                        let d = dayElem.dateObj;
+                        let dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+                        if (d.getDay() === 0 || globalHolidays.includes(dateStr)) {
+                            dayElem.style.color = '#ef4444';
+                            dayElem.style.fontWeight = 'bold';
+                        } else if (d.getDay() === 6) {
+                            dayElem.style.color = '#3b82f6';
+                            dayElem.style.fontWeight = 'bold';
+                        }
                     }
-                });
+                };
+
+                if(document.getElementById("main-date-picker")) {
+                    flatpickr("#main-date-picker", Object.assign({}, fpConfigMain, {
+                        disableMobile: "true",
+                        onChange: function(selectedDates, dateStr, instance) {
+                            window.location.href = '/main?date=' + dateStr;
+                        }
+                    }));
+                }
             </script>
 
             <% } else if (page === 'calendar') { %>
@@ -376,12 +404,33 @@
                     document.addEventListener('DOMContentLoaded', function() {
                         var calendarEl = document.getElementById('calendar');
                         
-                        var fp = flatpickr("#fc-date-picker", {
+                        // [V13] Flatpickr 공통 설정
+                        const fpConfigCal = {
                             locale: "ko",
+                            dateFormat: "Y-m-d",
+                            onDayCreate: function(dObj, dStr, fp, dayElem) {
+                                let d = dayElem.dateObj;
+                                let dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+                                if (d.getDay() === 0 || globalHolidays.includes(dateStr)) {
+                                    dayElem.style.color = '#ef4444';
+                                    dayElem.style.fontWeight = 'bold';
+                                } else if (d.getDay() === 6) {
+                                    dayElem.style.color = '#3b82f6';
+                                    dayElem.style.fontWeight = 'bold';
+                                }
+                            }
+                        };
+
+                        var fp = flatpickr("#fc-date-picker", Object.assign({}, fpConfigCal, {
                             onChange: function(selectedDates, dateStr) {
                                 calendar.gotoDate(dateStr);
                             }
-                        });
+                        }));
+                        
+                        if(document.getElementById("modal-start-date")) {
+                            flatpickr("#modal-start-date", fpConfigCal);
+                            flatpickr("#modal-end-date", fpConfigCal);
+                        }
 
                         var calendar = new FullCalendar.Calendar(calendarEl, {
                             initialView: 'dayGridMonth',
@@ -407,11 +456,9 @@
                                 },
                                 <% }) %>
                             ],
-                            // [V12] 빈칸 클릭 시 등록 팝업
                             dateClick: function(info) {
                                 openNewModal(info.dateStr);
                             },
-                            // [V12] 등록된 이벤트 클릭 시 수정 컨펌 후 수정 팝업
                             eventClick: function(info) {
                                 let isAdmin = <%= user && user.is_admin ? 'true' : 'false' %>;
                                 let currentUserName = "<%= user.name %>";
@@ -441,14 +488,12 @@
                                 }
                             },
                             dayCellDidMount: function(arg) {
+                                // [V13] FullCalendar는 arg.date를 UTC 자정으로 넘겨줌.
+                                // KST 환경 등에서 날짜가 틀어지지 않도록 UTC 메서드 사용
                                 let d = arg.date;
-                                let dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+                                let dateStr = d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0');
                                 
-                                const holidays = [
-                                    <% holidays.forEach(function(h) { %>'<%= h %>',<% }) %>
-                                ];
-                                
-                                if(holidays.includes(dateStr)) {
+                                if(globalHolidays.includes(dateStr)) {
                                     arg.el.classList.add('is-holiday');
                                 }
                             }
@@ -730,7 +775,7 @@
                     
                     <form action="/submit" method="post" class="space-y-5">
                         <input type="hidden" name="current_calendar_date" id="current_calendar_date">
-                        <!-- [V12] 수정을 위한 기존 데이터 ID 임시 보관 -->
+                        <!-- 수정을 위한 기존 데이터 ID 임시 보관 -->
                         <input type="hidden" name="record_ids" id="modal-record-ids">
                         
                         <div>
@@ -771,7 +816,6 @@
                             </div>
                         </div>
                         
-                        <!-- [V12] 버튼 3개 분리 구현 (취소, 삭제, 등록/수정) -->
                         <div class="flex justify-end space-x-2 pt-4 border-t border-gray-100">
                             <button type="button" onclick="closeModal()" class="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50">취소</button>
                             <button type="button" id="btn-delete" onclick="deleteEvent()" class="hidden px-5 py-2.5 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600">삭제</button>
