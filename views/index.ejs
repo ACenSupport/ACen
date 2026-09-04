@@ -104,7 +104,7 @@
         .fc-toolbar-title { font-weight: 800 !important; transition: color 0.2s; }
         .fc-toolbar-title:hover { color: #3b82f6 !important; }
 
-        /* [V20] 미니 달력(월/년도 선택) CSS Grid 기반 세로 2열 배열 완벽 적용! */
+        /* [V21] 미니 달력(월/년도 선택) CSS 완벽 복원 및 텍스트 중앙 정렬 추가 */
         .flatpickr-calendar.hasPlugins {
             width: 260px !important;
             border-radius: 16px !important;
@@ -128,8 +128,9 @@
             font-weight: 700 !important;
             padding: 10px 0 !important;
             display: flex !important;
-            justify-content: center;
-            align-items: center;
+            justify-content: center !important; /* [V21] 가로 가운데 정렬 */
+            align-items: center !important; /* 세로 가운데 정렬 */
+            text-align: center !important; /* 텍스트 가운데 정렬 강제 지정 */
         }
         .flatpickr-current-month { font-size: 1.1rem !important; }
         .flatpickr-current-month input.cur-year { font-size: 1.2rem !important; font-weight: 800 !important; }
@@ -443,22 +444,28 @@
                             flatpickr("#modal-end-date", fpConfigModal);
                         }
 
-                        // [V20] 에러 원인이었던 new 키워드 제거 & 함수로 바로 호출하여 플러그인 로드 에러 완전 해결
+                        // [V21] JS 에러 방지 (new 키워드 안전하게 복구 및 예외 처리)
                         let fpPlugins = [];
-                        if (typeof monthSelectPlugin !== 'undefined') {
-                            fpPlugins.push(monthSelectPlugin({
-                                shorthand: true,
-                                dateFormat: "Y-m-01",
-                                altFormat: "Y.m"
-                            }));
+                        try {
+                            if (typeof monthSelectPlugin !== 'undefined') {
+                                fpPlugins.push(new monthSelectPlugin({
+                                    shorthand: true,
+                                    dateFormat: "Y-m-01",
+                                    altFormat: "Y.m"
+                                }));
+                            }
+                        } catch(e) {
+                            console.error("Flatpickr Plugin Error:", e);
                         }
 
                         var fp = flatpickr("#fc-date-picker", {
                             locale: "ko",
                             plugins: fpPlugins,
                             onChange: function(selectedDates, dateStr) {
-                                calendar.gotoDate(dateStr);
-                                fp.close(); // 선택 후 깔끔하게 닫기
+                                if(calendar) {
+                                    calendar.gotoDate(dateStr);
+                                }
+                                fp.close();
                             }
                         });
 
