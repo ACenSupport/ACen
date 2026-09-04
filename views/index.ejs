@@ -13,7 +13,6 @@
     <script src="https://npmcdn.com/flatpickr/dist/l10n/ko.js"></script>
 
     <script>
-        // [V13] 서버에서 넘겨받은 holidays 배열을 글로벌 변수로 선언
         const globalHolidays = [
             <% if (typeof holidays !== 'undefined') { %>
                 <% holidays.forEach(function(h) { %>'<%= h %>',<% }) %>
@@ -93,11 +92,11 @@
         }
         input[type="number"] { -moz-appearance: textfield; }
         
-        /* [V13] 일자 글씨만 빨간색/파란색으로 만들기 위해 선택자 수정 */
-        .fc-day-sun .fc-daygrid-day-number { color: #ef4444 !important; font-weight: bold; }
-        .fc-day-sat .fc-daygrid-day-number { color: #3b82f6 !important; font-weight: bold; }
-        .is-holiday .fc-daygrid-day-number { color: #ef4444 !important; font-weight: bold; }
-        .fc-daygrid-day-number { font-weight: 800 !important; font-size: 1.1rem; text-decoration: none !important; }
+        /* [V14] 공휴일 강제 빨간색 처리를 위해 a 태그까지 명확하게 타겟팅 */
+        td.fc-day-sun a.fc-daygrid-day-number,
+        td.is-holiday a.fc-daygrid-day-number { color: #ef4444 !important; font-weight: 900 !important; }
+        
+        td.fc-day-sat a.fc-daygrid-day-number { color: #3b82f6 !important; font-weight: 900 !important; }
         
         .fc-toolbar-title { font-weight: 800 !important; transition: color 0.2s; }
         .fc-toolbar-title:hover { color: #3b82f6 !important; }
@@ -309,9 +308,7 @@
                     <% }) %>
                 </div>
             </main>
-            
             <script>
-                // [V13] Flatpickr 공통 설정 (대체공휴일 포함 빨간색/파란색 처리)
                 const fpConfigMain = {
                     locale: "ko",
                     dateFormat: "Y-m-d",
@@ -404,7 +401,6 @@
                     document.addEventListener('DOMContentLoaded', function() {
                         var calendarEl = document.getElementById('calendar');
                         
-                        // [V13] Flatpickr 공통 설정
                         const fpConfigCal = {
                             locale: "ko",
                             dateFormat: "Y-m-d",
@@ -487,14 +483,19 @@
                                     titleEl.onclick = function() { fp.open(); };
                                 }
                             },
+                            // [V14] 확실한 공휴일 처리 (UTC 변환 버그 제거)
                             dayCellDidMount: function(arg) {
-                                // [V13] FullCalendar는 arg.date를 UTC 자정으로 넘겨줌.
-                                // KST 환경 등에서 날짜가 틀어지지 않도록 UTC 메서드 사용
                                 let d = arg.date;
-                                let dateStr = d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0');
+                                let dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
                                 
                                 if(globalHolidays.includes(dateStr)) {
                                     arg.el.classList.add('is-holiday');
+                                    // CSS 우선순위 무시하고 확실하게 적용
+                                    let aTag = arg.el.querySelector('.fc-daygrid-day-number');
+                                    if(aTag) {
+                                        aTag.style.setProperty('color', '#ef4444', 'important');
+                                        aTag.style.setProperty('font-weight', '900', 'important');
+                                    }
                                 }
                             }
                         });
