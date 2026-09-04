@@ -29,7 +29,7 @@ let db = {
 };
 let record_id_counter = 1;
 
-// [V13] 2026년 기준 대한민국 완벽한 공휴일 + 대체공휴일 + 지방선거 반영
+// 2026년 기준 대한민국 완벽한 공휴일 + 대체공휴일 + 지방선거 반영
 const holidays = [
     '2026-01-01', // 신정
     '2026-02-16', '2026-02-17', '2026-02-18', // 설날
@@ -53,7 +53,7 @@ function getLeaveDays(startStr, endStr) {
     while (current <= end) {
         let dayOfWeek = current.getDay();
         let dateStr = current.getFullYear() + '-' + String(current.getMonth() + 1).padStart(2, '0') + '-' + String(current.getDate()).padStart(2, '0');
-        // 주말(0,6) 및 공휴일(대체공휴일 포함) 제외하고 평일 영업일만 카운트
+        
         if (dayOfWeek !== 0 && dayOfWeek !== 6 && !holidays.includes(dateStr)) {
             days += 1;
         }
