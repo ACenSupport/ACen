@@ -8,8 +8,12 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
+    
+    <!-- [V19] Flatpickr Core & monthSelect Plugin 복구 -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/ko.js"></script>
 
     <script>
@@ -100,25 +104,20 @@
         .fc-toolbar-title { font-weight: 800 !important; transition: color 0.2s; }
         .fc-toolbar-title:hover { color: #3b82f6 !important; }
 
-        /* 미니 달력(월/년도 선택) CSS 커스텀 (플러그인 없이 네이티브 Flatpickr 활용) */
-        .month-picker-custom {
-            width: 260px !important;
-            border-radius: 16px !important;
-            padding: 10px 0 !important;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
+        /* [V19] 미니 달력(월/년도 선택) CSS 완벽 복구 */
+        .flatpickr-monthSelect-theme-light .flatpickr-monthSelect-month {
+            border-radius: 12px !important;
+            font-size: 0.95rem !important;
+            font-weight: 700 !important;
+            padding: 8px !important;
+            margin: 2px !important;
         }
-        .month-picker-custom .flatpickr-innerContainer {
-            display: none !important; /* 일자 달력 숨김 */
+        .flatpickr-current-month {
+            font-size: 1.1rem !important;
         }
-        .month-picker-custom .flatpickr-month {
-            height: 50px !important;
-        }
-        .month-picker-custom .flatpickr-current-month {
+        .flatpickr-current-month input.cur-year {
             font-size: 1.2rem !important;
-            padding-top: 5px !important;
-        }
-        .month-picker-custom .flatpickr-current-month input.cur-year {
-            font-weight: 900 !important;
+            font-weight: 800 !important;
         }
 
         .main-date-picker {
@@ -430,16 +429,21 @@
                             flatpickr("#modal-end-date", fpConfigModal);
                         }
 
+                        // [V19] MonthSelect 플러그인 로드 확인 및 적용
+                        let fpPlugins = [];
+                        if (typeof monthSelectPlugin !== 'undefined') {
+                            fpPlugins.push(new monthSelectPlugin({
+                                shorthand: true,
+                                dateFormat: "Y-m-01",
+                                altFormat: "Y.m"
+                            }));
+                        }
+
                         var fp = flatpickr("#fc-date-picker", {
                             locale: "ko",
-                            onReady: function(selectedDates, dateStr, instance) {
-                                instance.calendarContainer.classList.add('month-picker-custom');
-                            },
-                            onMonthChange: function(selectedDates, dateStr, instance) {
-                                calendar.gotoDate(new Date(instance.currentYear, instance.currentMonth, 2));
-                            },
-                            onYearChange: function(selectedDates, dateStr, instance) {
-                                calendar.gotoDate(new Date(instance.currentYear, instance.currentMonth, 2));
+                            plugins: fpPlugins,
+                            onChange: function(selectedDates, dateStr) {
+                                calendar.gotoDate(dateStr);
                             }
                         });
 
@@ -498,7 +502,6 @@
                                     titleEl.onclick = function() { fp.open(); };
                                 }
                             },
-                            // [V18] 로컬 시간(KST) 완벽 매핑으로 이전 달력 빨간색 오류 해결!
                             dayCellDidMount: function(arg) {
                                 let d = arg.date;
                                 let dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
