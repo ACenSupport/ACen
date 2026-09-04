@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <title><%= sidebar_info.name %></title>
+    <!-- [V10] 네이버 나눔스퀘어 폰트 추가 -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/gh/moonspam/NanumSquare@2.0/nanumsquare.css">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
@@ -10,6 +13,9 @@
     <script src="https://npmcdn.com/flatpickr/dist/l10n/ko.js"></script>
     
     <style>
+        /* [V10] 전체 글꼴 나눔스퀘어로 덮어쓰기 */
+        body { font-family: 'NanumSquare', sans-serif !important; }
+
         input[type="number"]::-webkit-outer-spin-button,
         input[type="number"]::-webkit-inner-spin-button {
             -webkit-appearance: none; margin: 0;
@@ -235,6 +241,8 @@
                 <div class="flex justify-between items-end mb-8">
                     <div>
                         <h1 class="text-3xl font-extrabold text-gray-900">복무 현황</h1>
+                        <!-- [V10] 이번 달 영업일 수 표기 -->
+                        <p class="text-sm text-gray-500 mt-2 font-bold"><%= Number(current_date.split('-')[1]) %>월 기준 영업일: <span class="text-blue-600"><%= current_month_biz_days %>일</span></p>
                     </div>
                 </div>
 
@@ -315,8 +323,8 @@
                     </div>
                 </div>
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative">
-                    <!-- 미니 달력을 띄울 숨김 input -->
-                    <input type="text" id="fc-date-picker" class="hidden absolute top-0 left-0">
+                    <!-- [V10] 숨김 input: opacity-0과 absolute로 자리만 차지하게 두어 달력 타이틀 밑에 완벽히 팝업되도록 설정 -->
+                    <input type="text" id="fc-date-picker" style="width:0; height:0; border:0; padding:0; position:absolute; top:0; left:0; opacity:0; pointer-events:none;">
                     <div id="calendar"></div>
                 </div>
 
@@ -358,30 +366,28 @@
                                 let isAdmin = <%= user && user.is_admin ? 'true' : 'false' %>;
                                 let currentUserName = "<%= user.name %>";
                                 
-                                // 본인 데이터이거나 관리자인지 확인 (클라이언트 사이드 검증)
                                 if (!isAdmin && !info.event.title.startsWith(currentUserName + " ")) {
                                     alert('타인의 복무는 취소할 수 없습니다.');
                                     return;
                                 }
 
                                 if(confirm("선택한 날짜의 복무를 취소 할까요?")) {
-                                    // [V9] 화면을 옮기지 않고 현재 달력을 유지하기 위해 표시중인 달력을 가져옴
                                     let cd = calendar.getDate();
                                     let currentMonth = cd.getFullYear() + '-' + String(cd.getMonth() + 1).padStart(2, '0') + '-01';
                                     window.location.href = '/delete/' + info.event.id + '?date=' + currentMonth;
                                 }
                             },
                             datesSet: function(info) {
-                                // [V9] 달력이 넘어가거나 세팅될 때 현재 보고있는 달을 기억 (calendar.getDate() 사용)
                                 let cd = calendar.getDate();
                                 let currentMonth = cd.getFullYear() + '-' + String(cd.getMonth() + 1).padStart(2, '0') + '-01';
                                 
                                 let hiddenInput = document.getElementById('current_calendar_date');
                                 if (hiddenInput) hiddenInput.value = currentMonth;
 
-                                // 캘린더 타이틀(연.월) 클릭 시 미니 달력 호출
                                 let titleEl = document.querySelector('.fc-toolbar-title');
                                 if (titleEl) {
+                                    // [V10] positionElement를 타이틀로 강제 지정하여 바로 밑에 뜨게 함
+                                    fp.set('positionElement', titleEl);
                                     titleEl.style.cursor = 'pointer';
                                     titleEl.title = '클릭하여 다른 날짜로 이동';
                                     titleEl.onclick = function() { fp.open(); };
@@ -404,11 +410,11 @@
                     });
 
                     function getColor(reason) {
-                        if (reason === '연차') return '#a855f7'; // 보라색
-                        if (reason.includes('반차')) return '#f97316'; // 주황색
-                        if (reason === '출장') return '#3b82f6'; // 파란색
-                        if (['공가', '장기근속휴가', '청원휴가'].includes(reason)) return '#ec4899'; // 분홍색
-                        return '#10b981'; // 기본 초록
+                        if (reason === '연차') return '#a855f7';
+                        if (reason.includes('반차')) return '#f97316';
+                        if (reason === '출장') return '#3b82f6';
+                        if (['공가', '장기근속휴가', '청원휴가'].includes(reason)) return '#ec4899';
+                        return '#10b981';
                     }
                 </script>
             </main>
@@ -425,7 +431,7 @@
                     </div>
                 </div>
 
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-12">
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-gray-50 border-b border-gray-100">
@@ -457,6 +463,11 @@
                                         let barPct = pct > 100 ? 100 : pct;
                                         let barColor = pct >= 80 ? 'bg-green-500' : 'bg-blue-500';
                                     %>
+                                    <!-- [V10] 현재 몇 퍼센트인지 표시 -->
+                                    <div class="flex justify-between items-center mb-1">
+                                        <span class="text-xs font-bold text-gray-600">진행률</span>
+                                        <span class="text-xs font-bold text-gray-900"><%= pct.toFixed(1) %>%</span>
+                                    </div>
                                     <div class="relative w-full h-4 bg-gray-200 rounded overflow-hidden">
                                         <div class="absolute top-0 left-0 h-full <%= barColor %> transition-all duration-500" style="width: <%= barPct %>%;"></div>
                                         <div class="absolute top-0 h-full border-r-2 border-red-500 z-10" style="left: 80%;"></div>
@@ -474,6 +485,39 @@
                         </tbody>
                     </table>
                 </div>
+
+                <!-- [V10] 월별 연차 사용 내역 (표 추가) -->
+                <div>
+                    <div class="flex justify-between items-end mb-4">
+                        <h2 class="text-2xl font-extrabold text-gray-900">월별 연차 사용 내역</h2>
+                        <p class="text-sm text-gray-500">연차, 오전반차, 오후반차 합산 내역</p>
+                    </div>
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden overflow-x-auto">
+                        <table class="w-full text-center border-collapse whitespace-nowrap">
+                            <thead>
+                                <tr class="bg-gray-50 border-b border-gray-100">
+                                    <th class="p-3 font-bold text-gray-700 text-left">이름</th>
+                                    <% for(let i=1; i<=12; i++) { %>
+                                        <th class="p-3 font-bold text-gray-700"><%= i %>월</th>
+                                    <% } %>
+                                    <th class="p-3 font-bold text-gray-900 bg-gray-100">총합</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% monthly_data_for_view.forEach(function(item) { %>
+                                <tr class="border-b border-gray-50 hover:bg-gray-50 transition">
+                                    <td class="p-3 font-medium text-left pl-4"><%= item.name %></td>
+                                    <% let total = 0; for(let i=1; i<=12; i++) { total += item.usage[i]; %>
+                                        <td class="p-3 text-gray-600"><%= item.usage[i] > 0 ? item.usage[i] : '-' %></td>
+                                    <% } %>
+                                    <td class="p-3 font-bold text-blue-600 bg-gray-50"><%= total %></td>
+                                </tr>
+                                <% }) %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
             </main>
             
             <% } else if (page === 'admin') { %>
@@ -536,16 +580,14 @@
                 </div>
                 
                 <div class="mt-8 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                    <h2 class="text-xl font-bold text-gray-900 mb-4">데이터 백업 및 복구 (서버 업데이트 시 필수)</h2>
+                    <h2 class="text-xl font-bold text-gray-900 mb-4">데이터 백업 및 복구</h2>
                     <div class="flex space-x-6">
                         <div class="flex-1 bg-gray-50 p-5 rounded-xl border border-gray-200">
-                            <h3 class="font-bold text-gray-800 mb-2">백업 (데이터 다운로드)</h3>
-                            <p class="text-sm text-gray-500 mb-4">업데이트를 하기 전에 반드시 현재 데이터를 내 컴퓨터에 저장해.</p>
+                            <h3 class="font-bold text-gray-800 mb-4">백업 (데이터 다운로드)</h3>
                             <a href="/admin/backup" class="inline-block bg-blue-600 text-white px-5 py-2.5 rounded-lg font-bold hover:bg-blue-700 transition">데이터 백업하기 (.json)</a>
                         </div>
                         <div class="flex-1 bg-gray-50 p-5 rounded-xl border border-gray-200">
-                            <h3 class="font-bold text-gray-800 mb-2">복구 (데이터 업로드)</h3>
-                            <p class="text-sm text-gray-500 mb-4">업데이트 후 서버가 초기화되면, 백업 파일을 올려서 데이터를 복구해.</p>
+                            <h3 class="font-bold text-gray-800 mb-4">복구 (데이터 업로드)</h3>
                             <form action="/admin/restore" method="post" id="restore-form" class="space-y-3">
                                 <input type="file" id="backup-file" accept=".json" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300">
                                 <input type="hidden" name="backup_data" id="backup_data">

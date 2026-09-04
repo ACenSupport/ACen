@@ -45,7 +45,7 @@ function getLeaveDays(startStr, endStr) {
     let current = new Date(start);
     while (current <= end) {
         let dayOfWeek = current.getDay();
-        let dateStr = current.toISOString().split('T')[0];
+        let dateStr = current.getFullYear() + '-' + String(current.getMonth() + 1).padStart(2, '0') + '-' + String(current.getDate()).padStart(2, '0');
         // 주말(0,6) 및 공휴일 제외하고 평일 영업일만 카운트
         if (dayOfWeek !== 0 && dayOfWeek !== 6 && !holidays.includes(dateStr)) {
             days += 1;
@@ -154,14 +154,14 @@ app.get('/main', (req, res) => {
     if (!req.session.user) return res.redirect('/');
     
     let today = new Date();
-    let target_date_str = req.query.date || today.toISOString().split('T')[0];
+    let target_date_str = req.query.date || (today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0'));
     
     let targetDateObj = new Date(target_date_str);
     let prevDateObj = new Date(targetDateObj); prevDateObj.setDate(prevDateObj.getDate() - 1);
     let nextDateObj = new Date(targetDateObj); nextDateObj.setDate(nextDateObj.getDate() + 1);
     
-    let prev_date = prevDateObj.toISOString().split('T')[0];
-    let next_date = nextDateObj.toISOString().split('T')[0];
+    let prev_date = prevDateObj.getFullYear() + '-' + String(prevDateObj.getMonth() + 1).padStart(2, '0') + '-' + String(prevDateObj.getDate()).padStart(2, '0');
+    let next_date = nextDateObj.getFullYear() + '-' + String(nextDateObj.getMonth() + 1).padStart(2, '0') + '-' + String(nextDateObj.getDate()).padStart(2, '0');
 
     let team_status = [];
     let working_cnt = Object.keys(db.users).length;
@@ -194,6 +194,24 @@ app.get('/main', (req, res) => {
         else if (status === '출장') { working_cnt--; trip_cnt++; }
     }
 
+    // [V10] 이번 달 영업일 계산
+    let t_date = new Date(target_date_str);
+    let m_year = t_date.getFullYear();
+    let m_month = t_date.getMonth(); 
+    let firstDay = new Date(m_year, m_month, 1);
+    let lastDay = new Date(m_year, m_month + 1, 0);
+
+    let current_month_biz_days = 0;
+    let curr = new Date(firstDay);
+    while (curr <= lastDay) {
+        let dayOfWeek = curr.getDay();
+        let dateStr = curr.getFullYear() + '-' + String(curr.getMonth() + 1).padStart(2, '0') + '-' + String(curr.getDate()).padStart(2, '0');
+        if (dayOfWeek !== 0 && dayOfWeek !== 6 && !holidays.includes(dateStr)) {
+            current_month_biz_days += 1;
+        }
+        curr.setDate(curr.getDate() + 1);
+    }
+
     let team_members = Object.values(db.users).map(u => u.name);
 
     res.render('index', {
@@ -209,7 +227,8 @@ app.get('/main', (req, res) => {
         sidebar_info: db.sidebar_info,
         total_members: team_members.length,
         team_members,
-        holidays
+        holidays,
+        current_month_biz_days
     });
 });
 
@@ -245,13 +264,13 @@ app.get('/calendar', (req, res) => {
             let nextBizD = new Date(current.end_date);
             do {
                 nextBizD.setDate(nextBizD.getDate() + 1);
-            } while (nextBizD.getDay() === 0 || nextBizD.getDay() === 6 || holidays.includes(nextBizD.toISOString().split('T')[0]));
-            let nextBizStr = nextBizD.toISOString().split('T')[0];
+            } while (nextBizD.getDay() === 0 || nextBizD.getDay() === 6 || holidays.includes(nextBizD.getFullYear() + '-' + String(nextBizD.getMonth() + 1).padStart(2, '0') + '-' + String(nextBizD.getDate()).padStart(2, '0')));
+            let nextBizStr = nextBizD.getFullYear() + '-' + String(nextBizD.getMonth() + 1).padStart(2, '0') + '-' + String(nextBizD.getDate()).padStart(2, '0');
 
             // 현재 종료일 단순 다음 날
             let nextDayD = new Date(current.end_date);
             nextDayD.setDate(nextDayD.getDate() + 1);
-            let nextDayStr = nextDayD.toISOString().split('T')[0];
+            let nextDayStr = nextDayD.getFullYear() + '-' + String(nextDayD.getMonth() + 1).padStart(2, '0') + '-' + String(nextDayD.getDate()).padStart(2, '0');
 
             // 이어지는 휴가라면 병합
             if (next.start_date <= nextDayStr || next.start_date === nextBizStr || next.start_date <= current.end_date) {
@@ -273,12 +292,13 @@ app.get('/calendar', (req, res) => {
     let fc_records = mergedRecords.map(r => {
         let endDateObj = new Date(r.end_date);
         endDateObj.setDate(endDateObj.getDate() + 1);
+        let endDateFcStr = endDateObj.getFullYear() + '-' + String(endDateObj.getMonth() + 1).padStart(2, '0') + '-' + String(endDateObj.getDate()).padStart(2, '0');
         return {
             id: String(r.id),
             name: r.name,
             reason: r.reason,
             start_date: r.start_date,
-            end_date_fc: endDateObj.toISOString().split('T')[0]
+            end_date_fc: endDateFcStr
         };
     });
 
@@ -351,25 +371,67 @@ app.get('/delete/:ids', (req, res) => {
 app.get('/leave_status', (req, res) => {
     if (!req.session.user) return res.redirect('/');
     let leave_data = {};
+    let monthly_usage = {};
+    
     for (let eid in db.users) {
         let u = db.users[eid];
-        let used = 0.0;
-        db.records.forEach(r => {
-            if (r.name === u.name) {
-                let days = getLeaveDays(r.start_date, r.end_date);
-                if (r.reason === '연차') used += 1.0 * days;
-                else if (['오전반차', '오후반차'].includes(r.reason)) used += 0.5 * days;
-            }
-        });
+        monthly_usage[eid] = { 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0, 10:0, 11:0, 12:0 };
         leave_data[eid] = {
             name: u.name,
             granted: u.leave,
-            used: used,
-            remaining: u.leave - used
+            used: 0,
+            remaining: u.leave
         };
     }
+    
+    db.records.forEach(r => {
+        // 총 사용량 계산
+        let eid = Object.keys(db.users).find(k => db.users[k].name === r.name);
+        if(eid) {
+            let days = getLeaveDays(r.start_date, r.end_date);
+            if (r.reason === '연차') leave_data[eid].used += 1.0 * days;
+            else if (['오전반차', '오후반차'].includes(r.reason)) leave_data[eid].used += 0.5 * days;
+            
+            // 월별 사용량 계산
+            if (['연차', '오전반차', '오후반차'].includes(r.reason)) {
+                let current = new Date(r.start_date);
+                let end = new Date(r.end_date);
+                while (current <= end) {
+                    let dayOfWeek = current.getDay();
+                    let dateStr = current.getFullYear() + '-' + String(current.getMonth() + 1).padStart(2, '0') + '-' + String(current.getDate()).padStart(2, '0');
+                    if (dayOfWeek !== 0 && dayOfWeek !== 6 && !holidays.includes(dateStr)) {
+                        let m = current.getMonth() + 1;
+                        if (r.reason === '연차') monthly_usage[eid][m] += 1.0;
+                        else monthly_usage[eid][m] += 0.5;
+                    }
+                    current.setDate(current.getDate() + 1);
+                }
+            }
+        }
+    });
+    
+    for (let eid in leave_data) {
+        leave_data[eid].remaining = leave_data[eid].granted - leave_data[eid].used;
+    }
+    
+    let monthly_data_for_view = [];
+    for (let eid in db.users) {
+        monthly_data_for_view.push({
+            name: db.users[eid].name,
+            usage: monthly_usage[eid]
+        });
+    }
+
     let team_members = Object.values(db.users).map(u => u.name);
-    res.render('index', { page: 'leave', user: req.session.user, leave_data, team_members, sidebar_info: db.sidebar_info, holidays });
+    res.render('index', { 
+        page: 'leave', 
+        user: req.session.user, 
+        leave_data, 
+        team_members, 
+        sidebar_info: db.sidebar_info, 
+        holidays,
+        monthly_data_for_view
+    });
 });
 
 app.post('/update_leave', (req, res) => {
