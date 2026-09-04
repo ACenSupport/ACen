@@ -9,7 +9,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
     
-    <!-- [V19] Flatpickr Core & monthSelect Plugin 복구 -->
+    <!-- Flatpickr Core & Plugin -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -104,21 +104,35 @@
         .fc-toolbar-title { font-weight: 800 !important; transition: color 0.2s; }
         .fc-toolbar-title:hover { color: #3b82f6 !important; }
 
-        /* [V19] 미니 달력(월/년도 선택) CSS 완벽 복구 */
+        /* [V20] 미니 달력(월/년도 선택) CSS Grid 기반 세로 2열 배열 완벽 적용! */
+        .flatpickr-calendar.hasPlugins {
+            width: 260px !important;
+            border-radius: 16px !important;
+            padding-bottom: 10px !important;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
+        }
+        .flatpickr-monthSelect-theme-light .flatpickr-monthSelect-months {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            grid-template-rows: repeat(6, auto) !important;
+            grid-auto-flow: column !important; /* 위에서 아래로 먼저 채우기 (1월~6월 / 7월~12월) */
+            gap: 6px !important;
+            padding: 0 10px !important;
+            box-sizing: border-box;
+        }
         .flatpickr-monthSelect-theme-light .flatpickr-monthSelect-month {
+            width: 100% !important;
+            margin: 0 !important;
             border-radius: 12px !important;
             font-size: 0.95rem !important;
             font-weight: 700 !important;
-            padding: 8px !important;
-            margin: 2px !important;
+            padding: 10px 0 !important;
+            display: flex !important;
+            justify-content: center;
+            align-items: center;
         }
-        .flatpickr-current-month {
-            font-size: 1.1rem !important;
-        }
-        .flatpickr-current-month input.cur-year {
-            font-size: 1.2rem !important;
-            font-weight: 800 !important;
-        }
+        .flatpickr-current-month { font-size: 1.1rem !important; }
+        .flatpickr-current-month input.cur-year { font-size: 1.2rem !important; font-weight: 800 !important; }
 
         .main-date-picker {
             background: transparent !important;
@@ -429,10 +443,10 @@
                             flatpickr("#modal-end-date", fpConfigModal);
                         }
 
-                        // [V19] MonthSelect 플러그인 로드 확인 및 적용
+                        // [V20] 에러 원인이었던 new 키워드 제거 & 함수로 바로 호출하여 플러그인 로드 에러 완전 해결
                         let fpPlugins = [];
                         if (typeof monthSelectPlugin !== 'undefined') {
-                            fpPlugins.push(new monthSelectPlugin({
+                            fpPlugins.push(monthSelectPlugin({
                                 shorthand: true,
                                 dateFormat: "Y-m-01",
                                 altFormat: "Y.m"
@@ -444,6 +458,7 @@
                             plugins: fpPlugins,
                             onChange: function(selectedDates, dateStr) {
                                 calendar.gotoDate(dateStr);
+                                fp.close(); // 선택 후 깔끔하게 닫기
                             }
                         });
 
