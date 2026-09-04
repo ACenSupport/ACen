@@ -8,8 +8,12 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
+    
+    <!-- Flatpickr Core & Plugin -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/ko.js"></script>
 
     <script>
@@ -92,7 +96,6 @@
         }
         input[type="number"] { -moz-appearance: textfield; }
         
-        /* [V14] 공휴일 강제 빨간색 처리를 위해 a 태그까지 명확하게 타겟팅 */
         td.fc-day-sun a.fc-daygrid-day-number,
         td.is-holiday a.fc-daygrid-day-number { color: #ef4444 !important; font-weight: 900 !important; }
         
@@ -100,6 +103,22 @@
         
         .fc-toolbar-title { font-weight: 800 !important; transition: color 0.2s; }
         .fc-toolbar-title:hover { color: #3b82f6 !important; }
+
+        /* [V16] 월 선택기 플러그인 둥글고 작은 폰트 적용 */
+        .flatpickr-monthSelect-theme-light .flatpickr-monthSelect-month {
+            border-radius: 12px !important;
+            font-size: 0.85rem !important;
+            font-weight: 700 !important;
+            padding: 8px !important;
+            margin: 2px !important;
+        }
+        .flatpickr-current-month {
+            font-size: 1rem !important;
+        }
+        .flatpickr-current-month input.cur-year {
+            font-size: 1.1rem !important;
+            font-weight: 800 !important;
+        }
 
         .main-date-picker {
             background: transparent !important;
@@ -276,7 +295,7 @@
                 <div class="grid grid-cols-4 gap-4 mb-8">
                     <% team_status.forEach(function(item) { %>
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col h-full">
-                        <div class="flex justify-between items-start mb-6">
+                        <div class="flex justify-between items-start">
                             <div class="flex items-center space-x-3">
                                 <% if (item.profile_img) { %>
                                     <img src="<%= item.profile_img %>" class="w-10 h-10 rounded-full object-cover border border-gray-200">
@@ -291,18 +310,15 @@
                             </div>
                             <%
                                 let bgClass = "bg-gray-50 text-gray-600 border-gray-100";
-                                if (item.status === '정상근무') bgClass = "bg-green-50 text-green-600 border-green-100";
+                                if (item.reason === '정상근무') bgClass = "bg-green-50 text-green-600 border-green-100";
                                 else if (item.reason === '연차') bgClass = "bg-purple-50 text-purple-600 border-purple-100";
                                 else if (item.reason.includes('반차')) bgClass = "bg-orange-50 text-orange-600 border-orange-100";
                                 else if (item.reason === '출장') bgClass = "bg-blue-50 text-blue-600 border-blue-100";
                                 else if (['공가', '장기근속휴가', '청원휴가'].includes(item.reason)) bgClass = "bg-pink-50 text-pink-600 border-pink-100";
                             %>
                             <span class="px-2.5 py-1 text-xs font-bold rounded-md border <%= bgClass %>">
-                                <%= item.status %>
+                                <%= item.reason %>
                             </span>
-                        </div>
-                        <div class="mt-auto border-t border-gray-50 pt-4">
-                            <p class="text-sm font-medium text-gray-700">사유: <%= item.reason %></p>
                         </div>
                     </div>
                     <% }) %>
@@ -336,16 +352,12 @@
             </script>
 
             <% } else if (page === 'calendar') { %>
+            <!-- [V16] 캘린더 화면 텍스트 제거 및 사이즈 확장 (max-w-6xl -> max-w-[1400px]) -->
             <header class="bg-white p-4 border-b flex justify-center items-center">
                 <span class="text-gray-800 font-bold text-xl">복무 캘린더</span>
             </header>
             
-            <main class="p-8 max-w-6xl mx-auto">
-                <div class="flex justify-between items-end mb-8">
-                    <div>
-                        <h1 class="text-3xl font-extrabold text-gray-900">캘린더</h1>
-                    </div>
-                </div>
+            <main class="p-8 max-w-[1400px] w-full mx-auto">
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative">
                     <input type="text" id="fc-date-picker" style="width:0; height:0; border:0; padding:0; position:absolute; top:0; left:0; opacity:0; pointer-events:none;">
                     <div id="calendar"></div>
@@ -401,7 +413,8 @@
                     document.addEventListener('DOMContentLoaded', function() {
                         var calendarEl = document.getElementById('calendar');
                         
-                        const fpConfigCal = {
+                        // [V16] 모달 팝업용 일자 선택 달력 (기존 유지)
+                        const fpConfigModal = {
                             locale: "ko",
                             dateFormat: "Y-m-d",
                             onDayCreate: function(dObj, dStr, fp, dayElem) {
@@ -416,22 +429,31 @@
                                 }
                             }
                         };
+                        
+                        if(document.getElementById("modal-start-date")) {
+                            flatpickr("#modal-start-date", fpConfigModal);
+                            flatpickr("#modal-end-date", fpConfigModal);
+                        }
 
-                        var fp = flatpickr("#fc-date-picker", Object.assign({}, fpConfigCal, {
+                        // [V16] 타이틀 클릭 시 나타나는 미니달력 (날짜 제외, 연도/월 선택 전용)
+                        var fp = flatpickr("#fc-date-picker", {
+                            locale: "ko",
+                            plugins: [
+                                new monthSelectPlugin({
+                                  shorthand: true, 
+                                  dateFormat: "Y-m-01", 
+                                  altFormat: "Y.m"
+                                })
+                            ],
                             onChange: function(selectedDates, dateStr) {
                                 calendar.gotoDate(dateStr);
                             }
-                        }));
-                        
-                        if(document.getElementById("modal-start-date")) {
-                            flatpickr("#modal-start-date", fpConfigCal);
-                            flatpickr("#modal-end-date", fpConfigCal);
-                        }
+                        });
 
                         var calendar = new FullCalendar.Calendar(calendarEl, {
                             initialView: 'dayGridMonth',
                             initialDate: '<%= current_date %>',
-                            height: 'auto',
+                            height: 850, // [V16] 달력 사이즈 증가 (높이 고정)
                             titleFormat: function(date) {
                                 return date.date.year + '.' + String(date.date.month + 1).padStart(2, '0');
                             },
@@ -483,14 +505,12 @@
                                     titleEl.onclick = function() { fp.open(); };
                                 }
                             },
-                            // [V14] 확실한 공휴일 처리 (UTC 변환 버그 제거)
                             dayCellDidMount: function(arg) {
                                 let d = arg.date;
-                                let dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+                                let dateStr = d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0');
                                 
                                 if(globalHolidays.includes(dateStr)) {
                                     arg.el.classList.add('is-holiday');
-                                    // CSS 우선순위 무시하고 확실하게 적용
                                     let aTag = arg.el.querySelector('.fc-daygrid-day-number');
                                     if(aTag) {
                                         aTag.style.setProperty('color', '#ef4444', 'important');
@@ -766,129 +786,7 @@
             </script>
             <% } %>
 
-            <!-- 복무 입력 및 수정 모달 -->
-            <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-                <div class="bg-white p-8 rounded-2xl shadow-2xl w-[450px]">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 id="modal-title" class="text-xl font-bold text-gray-900">복무(부재) 기록 등록</h3>
-                        <button onclick="closeModal()" class="text-gray-400 hover:text-gray-900 font-bold text-xl">✕</button>
-                    </div>
-                    
-                    <form action="/submit" method="post" class="space-y-5">
-                        <input type="hidden" name="current_calendar_date" id="current_calendar_date">
-                        <!-- 수정을 위한 기존 데이터 ID 임시 보관 -->
-                        <input type="hidden" name="record_ids" id="modal-record-ids">
-                        
-                        <div>
-                            <label class="block text-sm font-bold text-gray-700 mb-2">대상 팀원</label>
-                            <select name="member" class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
-                                <% if (user && user.is_admin) { %>
-                                    <% team_members.forEach(function(m) { %>
-                                        <option value="<%= m %>" <% if (m === user.name) { %>selected<% } %>><%= m %></option>
-                                    <% }) %>
-                                <% } else { %>
-                                    <option value="<%= user.name %>" selected><%= user.name %> (본인)</option>
-                                <% } %>
-                            </select>
-                            <% if (user && !user.is_admin) { %>
-                            <p class="text-xs text-gray-400 mt-1">* 일반 직원은 본인의 복무만 등록 가능해.</p>
-                            <% } %>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-bold text-gray-700 mb-2">부재 사유</label>
-                            <select name="reason" class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
-                                <option value="연차">연차</option>
-                                <option value="오전반차">오전반차</option>
-                                <option value="오후반차">오후반차</option>
-                                <option value="공가">공가</option>
-                                <option value="장기근속휴가">장기근속휴가</option>
-                                <option value="청원휴가">청원휴가</option>
-                                <option value="출장">출장</option>
-                            </select>
-                        </div>
-                        <div class="flex space-x-4">
-                            <div class="flex-1">
-                                <label class="block text-sm font-bold text-gray-700 mb-2">시작 일자</label>
-                                <input type="text" id="modal-start-date" name="start_date" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-white flatpickr-input">
-                            </div>
-                            <div class="flex-1">
-                                <label class="block text-sm font-bold text-gray-700 mb-2">종료 일자</label>
-                                <input type="text" id="modal-end-date" name="end_date" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-white flatpickr-input">
-                            </div>
-                        </div>
-                        
-                        <div class="flex justify-end space-x-2 pt-4 border-t border-gray-100">
-                            <button type="button" onclick="closeModal()" class="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50">취소</button>
-                            <button type="button" id="btn-delete" onclick="deleteEvent()" class="hidden px-5 py-2.5 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600">삭제</button>
-                            <button type="submit" id="btn-register" class="px-5 py-2.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-black">등록하기</button>
-                            <button type="submit" id="btn-update" class="hidden px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">수정하기</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-            
-            <script>
-                if(document.getElementById("modal-start-date")) {
-                    flatpickr("#modal-start-date", { locale: "ko", dateFormat: "Y-m-d" });
-                    flatpickr("#modal-end-date", { locale: "ko", dateFormat: "Y-m-d" });
-                }
-            </script>
-            
-            <div id="profile-settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-                <div class="bg-white p-8 rounded-2xl shadow-2xl w-[400px]">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="text-xl font-bold text-gray-900">계정 정보 수정</h3>
-                        <button onclick="closeProfileModal()" class="text-gray-400 hover:text-gray-900 font-bold text-xl">✕</button>
-                    </div>
-                    <form id="profile-settings-form" action="/update_profile" method="post" class="space-y-5">
-                        <div>
-                            <label class="block text-sm font-bold text-gray-700 mb-2">사번 (수정불가)</label>
-                            <input type="text" value="<%= user.emp_id %>" readonly class="w-full border border-gray-300 p-2.5 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-bold text-gray-700 mb-2">프로필 사진 등록</label>
-                            <input type="file" id="profile_img_file" accept="image/*" onchange="convertImage(this, 'profile_img_base64')" class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black text-sm bg-gray-50">
-                            <input type="hidden" id="profile_img_base64" name="profile_img_base64">
-                            
-                            <label class="flex items-center space-x-2 cursor-pointer mt-3">
-                                <input type="checkbox" name="reset_profile_img" value="yes" class="w-4 h-4 text-gray-900 border-gray-300 rounded focus:ring-gray-900">
-                                <span class="text-sm text-gray-600 font-medium">기본 이미지로 변경</span>
-                            </label>
-                        </div>
-                        <div class="border-t border-gray-100 pt-4">
-                            <label class="block text-sm font-bold text-gray-700 mb-2">기존 비밀번호</label>
-                            <input type="password" name="current_pw" placeholder="비밀번호를 변경할 경우 입력" class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50 mb-3">
-                            <label class="block text-sm font-bold text-gray-700 mb-2">바꿀 비밀번호</label>
-                            <input type="password" name="new_pw" placeholder="새 비밀번호 입력" class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50 mb-3">
-                            <label class="block text-sm font-bold text-gray-700 mb-2">바꿀 비밀번호 확인</label>
-                            <input type="password" name="confirm_pw" placeholder="새 비밀번호 다시 입력" class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
-                        </div>
-                        <div class="flex justify-end space-x-2 pt-4 border-t border-gray-100">
-                            <button type="button" onclick="closeProfileModal()" class="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50">취소</button>
-                            <button type="submit" class="px-5 py-2.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-black">수정하기</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <script>
-                function convertImage(input, hiddenId) {
-                    if (input.files && input.files[0]) {
-                        var reader = new FileReader();
-                        reader.onload = function (e) {
-                            document.getElementById(hiddenId).value = e.target.result;
-                        };
-                        reader.readAsDataURL(input.files[0]);
-                    }
-                }
-                
-                function closeProfileModal() {
-                    document.getElementById('profile-settings-modal').classList.add('hidden');
-                    document.getElementById('profile-settings-form').reset();
-                    document.getElementById('profile_img_base64').value = '';
-                }
-            </script>
-
+            <!-- 사이드바 설정 모달 -->
             <% if (user && user.is_admin) { %>
             <div id="sidebar-settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
                 <div class="bg-white p-8 rounded-2xl shadow-2xl w-[400px]">
