@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <title><%= sidebar_info.name %></title>
+    <!-- 나눔스퀘어 폰트 -->
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/gh/moonspam/NanumSquare@2.0/nanumsquare.css">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
@@ -229,7 +231,7 @@
             </div>
         </div>
 
-        <div class="flex-1 overflow-y-auto">
+        <div class="flex-1 overflow-y-auto relative">
             <% if (page === 'main') { %>
             <header class="bg-white p-4 border-b flex justify-center items-center space-x-4">
                 <a href="/main?date=<%= prev_date %>" class="text-gray-400 hover:text-black transition" title="이전 날">
@@ -329,7 +331,6 @@
 
             <% } else if (page === 'calendar') { %>
             <script>
-                // [V22] 충돌없는 자체 제작 미니 달력용 변수
                 let calendar;
                 let currentPickerYear = new Date().getFullYear();
 
@@ -338,9 +339,9 @@
                     if (picker.classList.contains('hidden')) {
                         picker.classList.remove('hidden');
                         const titleRect = event.target.getBoundingClientRect();
-                        // 타이틀 바로 아래 중앙에 위치하도록 계산
-                        picker.style.top = (titleRect.bottom + window.scrollY + 10) + 'px';
-                        picker.style.left = (titleRect.left + window.scrollX + (titleRect.width / 2) - 130) + 'px'; 
+                        // 날짜 텍스트 바로 아래 중앙에 뜨도록 위치 계산 (fixed 활용)
+                        picker.style.top = (titleRect.bottom + 5) + 'px';
+                        picker.style.left = (titleRect.left + (titleRect.width / 2) - 120) + 'px'; 
                     } else {
                         picker.classList.add('hidden');
                     }
@@ -357,6 +358,16 @@
                     calendar.gotoDate(targetDate);
                     document.getElementById('custom-month-picker').classList.add('hidden');
                 }
+                
+                // 모달 밖 클릭시 닫기
+                document.addEventListener('click', function(e) {
+                    const picker = document.getElementById('custom-month-picker');
+                    if (picker && !picker.classList.contains('hidden')) {
+                        if (!picker.contains(e.target) && !e.target.classList.contains('fc-toolbar-title')) {
+                            picker.classList.add('hidden');
+                        }
+                    }
+                });
             </script>
 
             <main class="p-8 max-w-[1400px] w-full mx-auto relative">
@@ -364,23 +375,88 @@
                     <div id="calendar"></div>
                 </div>
 
-                <!-- [V22] 충돌 방지용 자체 제작 커스텀 미니 달력 -->
-                <div id="custom-month-picker" class="hidden absolute bg-white shadow-2xl rounded-2xl border border-gray-200 p-4 z-50 w-[260px]">
-                    <div class="flex justify-between items-center mb-4 border-b pb-2">
-                        <button type="button" onclick="changePickerYear(-1)" class="text-gray-400 hover:text-black font-extrabold px-3 text-lg">&lt;</button>
+                <!-- [V23] 안전한 방식의 자체 제작 미니 달력 (완벽한 세로 2열, 위치 최적화) -->
+                <div id="custom-month-picker" class="hidden fixed bg-white shadow-2xl rounded-2xl border border-gray-200 p-4 z-[150] w-[240px]">
+                    <div class="flex justify-between items-center mb-3 border-b border-gray-100 pb-2">
+                        <button type="button" onclick="changePickerYear(-1)" class="text-gray-400 hover:text-black font-extrabold px-2">&lt;</button>
                         <span id="picker-year" class="font-extrabold text-lg text-gray-900"></span>
-                        <button type="button" onclick="changePickerYear(1)" class="text-gray-400 hover:text-black font-extrabold px-3 text-lg">&gt;</button>
+                        <button type="button" onclick="changePickerYear(1)" class="text-gray-400 hover:text-black font-extrabold px-2">&gt;</button>
                     </div>
-                    <!-- 2열 세로 정렬 완벽 적용 -->
-                    <div class="grid grid-cols-2 grid-rows-6 grid-flow-col gap-2 text-center font-bold text-[0.95rem]">
-                        <% for(let i=1; i<=6; i++) { %>
-                            <button type="button" onclick="selectMonth(<%= i %>)" class="py-2 rounded-xl hover:bg-gray-100 text-gray-700 hover:text-black transition"><%= i %>월</button>
-                        <% } %>
-                        <% for(let i=7; i<=12; i++) { %>
-                            <button type="button" onclick="selectMonth(<%= i %>)" class="py-2 rounded-xl hover:bg-gray-100 text-gray-700 hover:text-black transition"><%= i %>월</button>
-                        <% } %>
+                    
+                    <div class="flex justify-between space-x-2 text-center font-bold text-sm">
+                        <!-- 1열 (1~6월) -->
+                        <div class="flex flex-col flex-1 space-y-1">
+                            <% for(let i=1; i<=6; i++) { %>
+                                <button type="button" onclick="selectMonth(<%= i %>)" class="py-2 rounded-xl hover:bg-gray-100 text-gray-700 hover:text-black transition"><%= i %>월</button>
+                            <% } %>
+                        </div>
+                        <!-- 2열 (7~12월) -->
+                        <div class="flex flex-col flex-1 space-y-1">
+                            <% for(let i=7; i<=12; i++) { %>
+                                <button type="button" onclick="selectMonth(<%= i %>)" class="py-2 rounded-xl hover:bg-gray-100 text-gray-700 hover:text-black transition"><%= i %>월</button>
+                            <% } %>
+                        </div>
                     </div>
-                    <button type="button" onclick="document.getElementById('custom-month-picker').classList.add('hidden')" class="mt-4 w-full py-2 bg-gray-100 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-200 transition">닫기</button>
+                </div>
+
+                <!-- [V23] 복원된 복무 입력 및 수정 모달 -->
+                <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[100]">
+                    <div class="bg-white p-8 rounded-2xl shadow-2xl w-[450px]">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 id="modal-title" class="text-xl font-bold text-gray-900">복무(부재) 기록 등록</h3>
+                            <button onclick="closeModal()" class="text-gray-400 hover:text-gray-900 font-bold text-xl">✕</button>
+                        </div>
+                        
+                        <form action="/submit" method="post" class="space-y-5">
+                            <input type="hidden" name="current_calendar_date" id="current_calendar_date">
+                            <input type="hidden" name="record_ids" id="modal-record-ids">
+                            
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">대상 팀원</label>
+                                <select name="member" class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
+                                    <% if (user && user.is_admin) { %>
+                                        <% team_members.forEach(function(m) { %>
+                                            <option value="<%= m %>" <% if (m === user.name) { %>selected<% } %>><%= m %></option>
+                                        <% }) %>
+                                    <% } else { %>
+                                        <option value="<%= user.name %>" selected><%= user.name %> (본인)</option>
+                                    <% } %>
+                                </select>
+                                <% if (user && !user.is_admin) { %>
+                                <p class="text-xs text-gray-400 mt-1">* 일반 직원은 본인의 복무만 등록 가능해.</p>
+                                <% } %>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">부재 사유</label>
+                                <select name="reason" class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
+                                    <option value="연차">연차</option>
+                                    <option value="오전반차">오전반차</option>
+                                    <option value="오후반차">오후반차</option>
+                                    <option value="공가">공가</option>
+                                    <option value="장기근속휴가">장기근속휴가</option>
+                                    <option value="청원휴가">청원휴가</option>
+                                    <option value="출장">출장</option>
+                                </select>
+                            </div>
+                            <div class="flex space-x-4">
+                                <div class="flex-1">
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">시작 일자</label>
+                                    <input type="text" id="modal-start-date" name="start_date" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-white flatpickr-input">
+                                </div>
+                                <div class="flex-1">
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">종료 일자</label>
+                                    <input type="text" id="modal-end-date" name="end_date" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-white flatpickr-input">
+                                </div>
+                            </div>
+                            
+                            <div class="flex justify-end space-x-2 pt-4 border-t border-gray-100">
+                                <button type="button" onclick="closeModal()" class="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50">취소</button>
+                                <button type="button" id="btn-delete" onclick="deleteEvent()" class="hidden px-5 py-2.5 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600">삭제</button>
+                                <button type="submit" id="btn-register" class="px-5 py-2.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-black">등록하기</button>
+                                <button type="submit" id="btn-update" class="hidden px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">수정하기</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
 
                 <script>
@@ -396,7 +472,7 @@
                         
                         let currentUserName = "<%= user.name %>";
                         let memberSelect = document.querySelector('select[name="member"]');
-                        memberSelect.value = currentUserName;
+                        if (memberSelect) memberSelect.value = currentUserName;
                         
                         document.getElementById('modal').classList.remove('hidden');
                     }
@@ -409,8 +485,11 @@
                         document.getElementById('btn-update').classList.remove('hidden');
                         
                         let props = event.extendedProps;
-                        document.querySelector('select[name="member"]').value = props.name;
-                        document.querySelector('select[name="reason"]').value = props.reason;
+                        let memberSelect = document.querySelector('select[name="member"]');
+                        if(memberSelect) memberSelect.value = props.name;
+                        
+                        let reasonSelect = document.querySelector('select[name="reason"]');
+                        if(reasonSelect) reasonSelect.value = props.reason;
                         
                         document.getElementById('modal-start-date')._flatpickr.setDate(props.orig_start);
                         document.getElementById('modal-end-date')._flatpickr.setDate(props.orig_end);
@@ -497,7 +576,8 @@
                             datesSet: function(info) {
                                 let cd = calendar.getDate();
                                 currentPickerYear = cd.getFullYear();
-                                document.getElementById('picker-year').innerText = currentPickerYear;
+                                let py = document.getElementById('picker-year');
+                                if(py) py.innerText = currentPickerYear;
 
                                 let currentMonth = cd.getFullYear() + '-' + String(cd.getMonth() + 1).padStart(2, '0') + '-01';
                                 let hiddenInput = document.getElementById('current_calendar_date');
@@ -733,7 +813,7 @@
             </main>
 
             <!-- 팀원 추가 모달 -->
-            <div id="admin-create-user-modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+            <div id="admin-create-user-modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[100]">
                 <div class="bg-white p-8 rounded-2xl shadow-2xl w-[400px]">
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-xl font-bold text-gray-900">팀원 추가 (계정 생성)</h3>
@@ -763,7 +843,7 @@
             </div>
             
             <!-- 관리자 PW 직접 변경 모달 -->
-            <div id="admin-pw-modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+            <div id="admin-pw-modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[100]">
                 <div class="bg-white p-8 rounded-2xl shadow-2xl w-[400px]">
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-xl font-bold text-gray-900"><span id="pw-modal-name"></span> 비밀번호 변경</h3>
@@ -791,9 +871,65 @@
             </script>
             <% } %>
 
-            <!-- 사이드바 설정 모달 -->
+            <!-- 계정 정보 수정 모달 (복구됨) -->
+            <div id="profile-settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[100]">
+                <div class="bg-white p-8 rounded-2xl shadow-2xl w-[400px]">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold text-gray-900">계정 정보 수정</h3>
+                        <button onclick="closeProfileModal()" class="text-gray-400 hover:text-gray-900 font-bold text-xl">✕</button>
+                    </div>
+                    <form id="profile-settings-form" action="/update_profile" method="post" class="space-y-5">
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">사번 (수정불가)</label>
+                            <input type="text" value="<%= user.emp_id %>" readonly class="w-full border border-gray-300 p-2.5 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">프로필 사진 등록</label>
+                            <input type="file" id="profile_img_file" accept="image/*" onchange="convertImage(this, 'profile_img_base64')" class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black text-sm bg-gray-50">
+                            <input type="hidden" id="profile_img_base64" name="profile_img_base64">
+                            
+                            <label class="flex items-center space-x-2 cursor-pointer mt-3">
+                                <input type="checkbox" name="reset_profile_img" value="yes" class="w-4 h-4 text-gray-900 border-gray-300 rounded focus:ring-gray-900">
+                                <span class="text-sm text-gray-600 font-medium">기본 이미지로 변경</span>
+                            </label>
+                        </div>
+                        <div class="border-t border-gray-100 pt-4">
+                            <label class="block text-sm font-bold text-gray-700 mb-2">기존 비밀번호</label>
+                            <input type="password" name="current_pw" placeholder="비밀번호를 변경할 경우 입력" class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50 mb-3">
+                            <label class="block text-sm font-bold text-gray-700 mb-2">바꿀 비밀번호</label>
+                            <input type="password" name="new_pw" placeholder="새 비밀번호 입력" class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50 mb-3">
+                            <label class="block text-sm font-bold text-gray-700 mb-2">바꿀 비밀번호 확인</label>
+                            <input type="password" name="confirm_pw" placeholder="새 비밀번호 다시 입력" class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
+                        </div>
+                        <div class="flex justify-end space-x-2 pt-4 border-t border-gray-100">
+                            <button type="button" onclick="closeProfileModal()" class="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50">취소</button>
+                            <button type="submit" class="px-5 py-2.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-black">수정하기</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <script>
+                function convertImage(input, hiddenId) {
+                    if (input.files && input.files[0]) {
+                        var reader = new FileReader();
+                        reader.onload = function (e) {
+                            document.getElementById(hiddenId).value = e.target.result;
+                        };
+                        reader.readAsDataURL(input.files[0]);
+                    }
+                }
+                
+                function closeProfileModal() {
+                    document.getElementById('profile-settings-modal').classList.add('hidden');
+                    document.getElementById('profile-settings-form').reset();
+                    document.getElementById('profile_img_base64').value = '';
+                }
+            </script>
+
+            <!-- 사이드바 설정 모달 (복구됨) -->
             <% if (user && user.is_admin) { %>
-            <div id="sidebar-settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+            <div id="sidebar-settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[100]">
                 <div class="bg-white p-8 rounded-2xl shadow-2xl w-[400px]">
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-xl font-bold text-gray-900">사이드바 설정</h3>
