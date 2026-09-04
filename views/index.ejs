@@ -3,17 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <title><%= sidebar_info.name %></title>
-    <!-- 나눔스퀘어 폰트 -->
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/gh/moonspam/NanumSquare@2.0/nanumsquare.css">
-    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
-    
-    <!-- Flatpickr Core & Plugin -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/ko.js"></script>
 
     <script>
@@ -98,42 +92,10 @@
         
         td.fc-day-sun a.fc-daygrid-day-number,
         td.is-holiday a.fc-daygrid-day-number { color: #ef4444 !important; font-weight: 900 !important; }
-        
         td.fc-day-sat a.fc-daygrid-day-number { color: #3b82f6 !important; font-weight: 900 !important; }
         
         .fc-toolbar-title { font-weight: 800 !important; transition: color 0.2s; }
         .fc-toolbar-title:hover { color: #3b82f6 !important; }
-
-        /* [V21] 미니 달력(월/년도 선택) CSS 완벽 복원 및 텍스트 중앙 정렬 추가 */
-        .flatpickr-calendar.hasPlugins {
-            width: 260px !important;
-            border-radius: 16px !important;
-            padding-bottom: 10px !important;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
-        }
-        .flatpickr-monthSelect-theme-light .flatpickr-monthSelect-months {
-            display: grid !important;
-            grid-template-columns: 1fr 1fr !important;
-            grid-template-rows: repeat(6, auto) !important;
-            grid-auto-flow: column !important; /* 위에서 아래로 먼저 채우기 (1월~6월 / 7월~12월) */
-            gap: 6px !important;
-            padding: 0 10px !important;
-            box-sizing: border-box;
-        }
-        .flatpickr-monthSelect-theme-light .flatpickr-monthSelect-month {
-            width: 100% !important;
-            margin: 0 !important;
-            border-radius: 12px !important;
-            font-size: 0.95rem !important;
-            font-weight: 700 !important;
-            padding: 10px 0 !important;
-            display: flex !important;
-            justify-content: center !important; /* [V21] 가로 가운데 정렬 */
-            align-items: center !important; /* 세로 가운데 정렬 */
-            text-align: center !important; /* 텍스트 가운데 정렬 강제 지정 */
-        }
-        .flatpickr-current-month { font-size: 1.1rem !important; }
-        .flatpickr-current-month input.cur-year { font-size: 1.2rem !important; font-weight: 800 !important; }
 
         .main-date-picker {
             background: transparent !important;
@@ -214,7 +176,6 @@
     
     <% } else { %>
     <div class="flex h-screen overflow-hidden">
-        <!-- 사이드바 -->
         <div class="w-64 bg-white border-r flex flex-col justify-between shrink-0">
             <div>
                 <div class="p-6 flex items-center justify-between border-b border-gray-100 group">
@@ -367,10 +328,59 @@
             </script>
 
             <% } else if (page === 'calendar') { %>
-            <main class="p-8 max-w-[1400px] w-full mx-auto">
+            <script>
+                // [V22] 충돌없는 자체 제작 미니 달력용 변수
+                let calendar;
+                let currentPickerYear = new Date().getFullYear();
+
+                function toggleMonthPicker(event) {
+                    const picker = document.getElementById('custom-month-picker');
+                    if (picker.classList.contains('hidden')) {
+                        picker.classList.remove('hidden');
+                        const titleRect = event.target.getBoundingClientRect();
+                        // 타이틀 바로 아래 중앙에 위치하도록 계산
+                        picker.style.top = (titleRect.bottom + window.scrollY + 10) + 'px';
+                        picker.style.left = (titleRect.left + window.scrollX + (titleRect.width / 2) - 130) + 'px'; 
+                    } else {
+                        picker.classList.add('hidden');
+                    }
+                }
+
+                function changePickerYear(delta) {
+                    currentPickerYear += delta;
+                    document.getElementById('picker-year').innerText = currentPickerYear;
+                }
+
+                function selectMonth(month) {
+                    let monthStr = String(month).padStart(2, '0');
+                    let targetDate = currentPickerYear + '-' + monthStr + '-01';
+                    calendar.gotoDate(targetDate);
+                    document.getElementById('custom-month-picker').classList.add('hidden');
+                }
+            </script>
+
+            <main class="p-8 max-w-[1400px] w-full mx-auto relative">
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative">
-                    <input type="text" id="fc-date-picker" style="width:0; height:0; border:0; padding:0; position:absolute; top:0; left:0; opacity:0; pointer-events:none;">
                     <div id="calendar"></div>
+                </div>
+
+                <!-- [V22] 충돌 방지용 자체 제작 커스텀 미니 달력 -->
+                <div id="custom-month-picker" class="hidden absolute bg-white shadow-2xl rounded-2xl border border-gray-200 p-4 z-50 w-[260px]">
+                    <div class="flex justify-between items-center mb-4 border-b pb-2">
+                        <button type="button" onclick="changePickerYear(-1)" class="text-gray-400 hover:text-black font-extrabold px-3 text-lg">&lt;</button>
+                        <span id="picker-year" class="font-extrabold text-lg text-gray-900"></span>
+                        <button type="button" onclick="changePickerYear(1)" class="text-gray-400 hover:text-black font-extrabold px-3 text-lg">&gt;</button>
+                    </div>
+                    <!-- 2열 세로 정렬 완벽 적용 -->
+                    <div class="grid grid-cols-2 grid-rows-6 grid-flow-col gap-2 text-center font-bold text-[0.95rem]">
+                        <% for(let i=1; i<=6; i++) { %>
+                            <button type="button" onclick="selectMonth(<%= i %>)" class="py-2 rounded-xl hover:bg-gray-100 text-gray-700 hover:text-black transition"><%= i %>월</button>
+                        <% } %>
+                        <% for(let i=7; i<=12; i++) { %>
+                            <button type="button" onclick="selectMonth(<%= i %>)" class="py-2 rounded-xl hover:bg-gray-100 text-gray-700 hover:text-black transition"><%= i %>월</button>
+                        <% } %>
+                    </div>
+                    <button type="button" onclick="document.getElementById('custom-month-picker').classList.add('hidden')" class="mt-4 w-full py-2 bg-gray-100 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-200 transition">닫기</button>
                 </div>
 
                 <script>
@@ -444,32 +454,7 @@
                             flatpickr("#modal-end-date", fpConfigModal);
                         }
 
-                        // [V21] JS 에러 방지 (new 키워드 안전하게 복구 및 예외 처리)
-                        let fpPlugins = [];
-                        try {
-                            if (typeof monthSelectPlugin !== 'undefined') {
-                                fpPlugins.push(new monthSelectPlugin({
-                                    shorthand: true,
-                                    dateFormat: "Y-m-01",
-                                    altFormat: "Y.m"
-                                }));
-                            }
-                        } catch(e) {
-                            console.error("Flatpickr Plugin Error:", e);
-                        }
-
-                        var fp = flatpickr("#fc-date-picker", {
-                            locale: "ko",
-                            plugins: fpPlugins,
-                            onChange: function(selectedDates, dateStr) {
-                                if(calendar) {
-                                    calendar.gotoDate(dateStr);
-                                }
-                                fp.close();
-                            }
-                        });
-
-                        var calendar = new FullCalendar.Calendar(calendarEl, {
+                        calendar = new FullCalendar.Calendar(calendarEl, {
                             initialView: 'dayGridMonth',
                             initialDate: '<%= current_date %>',
                             height: 850, 
@@ -511,17 +496,18 @@
                             },
                             datesSet: function(info) {
                                 let cd = calendar.getDate();
+                                currentPickerYear = cd.getFullYear();
+                                document.getElementById('picker-year').innerText = currentPickerYear;
+
                                 let currentMonth = cd.getFullYear() + '-' + String(cd.getMonth() + 1).padStart(2, '0') + '-01';
-                                
                                 let hiddenInput = document.getElementById('current_calendar_date');
                                 if (hiddenInput) hiddenInput.value = currentMonth;
 
                                 let titleEl = document.querySelector('.fc-toolbar-title');
                                 if (titleEl) {
-                                    fp.set('positionElement', titleEl);
                                     titleEl.style.cursor = 'pointer';
-                                    titleEl.title = '클릭하여 다른 날짜로 이동';
-                                    titleEl.onclick = function() { fp.open(); };
+                                    titleEl.title = '클릭하여 월 선택';
+                                    titleEl.onclick = function(e) { toggleMonthPicker(e); };
                                 }
                             },
                             dayCellDidMount: function(arg) {
