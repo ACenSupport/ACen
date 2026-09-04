@@ -1,9 +1,17 @@
 const express = require('express');
+const session = require('express-session');
 const app = express();
 
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static('public'));
+
+app.use(session({
+    secret: 'work_manage_secret_key_123',
+    resave: false,
+    saveUninitialized: true
+}));
+
 app.set('view engine', 'ejs');
 
 let db = {
@@ -13,16 +21,13 @@ let db = {
         '1003': {'pw': '1111', 'name': '최현진', 'is_admin': false, 'leave': 15.0, 'profile_img': null},
         '1004': {'pw': '1111', 'name': '서우주', 'is_admin': false, 'leave': 15.0, 'profile_img': null},
     },
-    'records': []
+    'records': [],
+    'sidebar_info': {
+        'name': '우리팀 복무관리',
+        'logo_url': null
+    }
 };
 let record_id_counter = 1;
-
-let sidebar_info = {
-    'name': '우리팀 복무관리',
-    'logo_url': null
-};
-
-let currentUser = null;
 
 function getLeaveDays(startStr, endStr) {
     let start = new Date(startStr);
@@ -40,13 +45,13 @@ function getLeaveDays(startStr, endStr) {
 }
 
 app.get('/', (req, res) => {
-    res.render('index', { page: 'login', sidebar_info, user: currentUser });
+    res.render('index', { page: 'login', sidebar_info: db.sidebar_info, user: req.session.user });
 });
 
 app.post('/login', (req, res) => {
     const { emp_id, emp_pw } = req.body;
     if (db.users[emp_id] && db.users[emp_id].pw === emp_pw) {
-        currentUser = {
+        req.session.user = {
             emp_id: emp_id,
             name: db.users[emp_id].name,
             is_admin: db.users[emp_id].is_admin,
@@ -83,21 +88,21 @@ app.post('/reset_pw_request', (req, res) => {
 });
 
 app.post('/update_sidebar', (req, res) => {
-    if (!currentUser || !currentUser.is_admin) return res.status(403).send("권한이 없어.");
+    if (!req.session.user || !req.session.user.is_admin) return res.status(403).send("권한이 없어.");
     const { team_name, reset_logo, logo_base64 } = req.body;
-    if (team_name) sidebar_info.name = team_name;
+    if (team_name) db.sidebar_info.name = team_name;
     
     if (reset_logo === 'yes') {
-        sidebar_info.logo_url = null;
+        db.sidebar_info.logo_url = null;
     } else if (logo_base64) {
-        sidebar_info.logo_url = logo_base64;
+        db.sidebar_info.logo_url = logo_base64;
     }
     res.redirect(req.get('referer') || '/main');
 });
 
 app.post('/update_profile', (req, res) => {
-    if (!currentUser) return res.redirect('/');
-    let user_db = db.users[currentUser.emp_id];
+    if (!req.session.user) return res.redirect('/');
+    let user_db = db.users[req.session.user.emp_id];
     const { current_pw, new_pw, confirm_pw, reset_profile_img, profile_img_base64 } = req.body;
 
     if (current_pw || new_pw || confirm_pw) {
@@ -114,18 +119,18 @@ app.post('/update_profile', (req, res) => {
 
     if (reset_profile_img === 'yes') {
         user_db.profile_img = null;
-        currentUser.profile_img = null;
+        req.session.user.profile_img = null;
     } else if (profile_img_base64) {
         user_db.profile_img = profile_img_base64;
-        currentUser.profile_img = profile_img_base64;
+        req.session.user.profile_img = profile_img_base64;
     }
 
-    currentUser.name = user_db.name;
+    req.session.user.name = user_db.name;
     res.redirect(req.get('referer') || '/main');
 });
 
 app.get('/main', (req, res) => {
-    if (!currentUser) return res.redirect('/');
+    if (!req.session.user) return res.redirect('/');
     
     let today = new Date();
     let target_date_str = req.query.date || today.toISOString().split('T')[0];
@@ -172,7 +177,7 @@ app.get('/main', (req, res) => {
 
     res.render('index', {
         page: 'main',
-        user: currentUser,
+        user: req.session.user,
         team_status,
         current_date: target_date_str,
         prev_date,
@@ -180,14 +185,14 @@ app.get('/main', (req, res) => {
         working_cnt,
         leave_cnt,
         trip_cnt,
-        sidebar_info,
+        sidebar_info: db.sidebar_info,
         total_members: team_members.length,
         team_members
     });
 });
 
 app.get('/calendar', (req, res) => {
-    if (!currentUser) return res.redirect('/');
+    if (!req.session.user) return res.redirect('/');
     let fc_records = db.records.map(r => {
         let endDateObj = new Date(r.end_date);
         endDateObj.setDate(endDateObj.getDate() + 1);
@@ -200,11 +205,11 @@ app.get('/calendar', (req, res) => {
         };
     });
     let team_members = Object.values(db.users).map(u => u.name);
-    res.render('index', { page: 'calendar', user: currentUser, records: fc_records, team_members, sidebar_info });
+    res.render('index', { page: 'calendar', user: req.session.user, records: fc_records, team_members, sidebar_info: db.sidebar_info });
 });
 
 app.post('/submit', (req, res) => {
-    if (!currentUser) return res.redirect('/');
+    if (!req.session.user) return res.redirect('/');
     const { member, reason, start_date, end_date } = req.body;
     if (start_date > end_date) {
         return res.send("<script>alert('종료일이 시작일보다 빠를 수 없어.'); history.back();</script>");
@@ -220,14 +225,14 @@ app.post('/submit', (req, res) => {
 });
 
 app.get('/delete/:id', (req, res) => {
-    if (!currentUser) return res.redirect('/');
+    if (!req.session.user) return res.redirect('/');
     let id = parseInt(req.params.id);
     db.records = db.records.filter(r => r.id !== id);
     res.redirect('/calendar');
 });
 
 app.get('/leave_status', (req, res) => {
-    if (!currentUser) return res.redirect('/');
+    if (!req.session.user) return res.redirect('/');
     let leave_data = {};
     for (let eid in db.users) {
         let u = db.users[eid];
@@ -247,11 +252,11 @@ app.get('/leave_status', (req, res) => {
         };
     }
     let team_members = Object.values(db.users).map(u => u.name);
-    res.render('index', { page: 'leave', user: currentUser, leave_data, team_members, sidebar_info });
+    res.render('index', { page: 'leave', user: req.session.user, leave_data, team_members, sidebar_info: db.sidebar_info });
 });
 
 app.post('/update_leave', (req, res) => {
-    if (!currentUser || !currentUser.is_admin) return res.status(403).send("권한이 없어.");
+    if (!req.session.user || !req.session.user.is_admin) return res.status(403).send("권한이 없어.");
     const { emp_id, granted } = req.body;
     if (db.users[emp_id]) {
         db.users[emp_id].leave = parseFloat(granted);
@@ -260,13 +265,13 @@ app.post('/update_leave', (req, res) => {
 });
 
 app.get('/admin', (req, res) => {
-    if (!currentUser || !currentUser.is_admin) return res.send("<script>alert('관리자만 접근 가능합니다.'); history.back();</script>");
+    if (!req.session.user || !req.session.user.is_admin) return res.send("<script>alert('관리자만 접근 가능합니다.'); history.back();</script>");
     let team_members = Object.values(db.users).map(u => u.name);
-    res.render('index', { page: 'admin', user: currentUser, users: db.users, team_members, sidebar_info });
+    res.render('index', { page: 'admin', user: req.session.user, users: db.users, team_members, sidebar_info: db.sidebar_info });
 });
 
 app.post('/admin/action', (req, res) => {
-    if (!currentUser || !currentUser.is_admin) return res.status(403).send("권한이 없어.");
+    if (!req.session.user || !req.session.user.is_admin) return res.status(403).send("권한이 없어.");
     const { action, emp_id, new_pw } = req.body;
     if (emp_id === '60514' && action === 'delete') {
         return res.send("<script>alert('최고 관리자는 삭제할 수 없습니다.'); history.back();</script>");
@@ -281,24 +286,26 @@ app.post('/admin/action', (req, res) => {
     res.redirect('/admin');
 });
 
-// 데이터 백업 (JSON 파일 다운로드)
 app.get('/admin/backup', (req, res) => {
-    if (!currentUser || !currentUser.is_admin) return res.status(403).send("권한이 없어.");
+    if (!req.session.user || !req.session.user.is_admin) return res.status(403).send("권한이 없어.");
     const backupData = JSON.stringify(db, null, 2);
     res.setHeader('Content-disposition', 'attachment; filename=work_manage_backup.json');
     res.setHeader('Content-type', 'application/json');
     res.send(backupData);
 });
 
-// 데이터 복구 (JSON 데이터 업로드 및 덮어쓰기)
 app.post('/admin/restore', (req, res) => {
-    if (!currentUser || !currentUser.is_admin) return res.status(403).send("권한이 없어.");
+    if (!req.session.user || !req.session.user.is_admin) return res.status(403).send("권한이 없어.");
     try {
         const backupData = JSON.parse(req.body.backup_data);
+        // sidebar_info 포함 검증 및 복원
         if (backupData && backupData.users && backupData.records) {
             db = backupData;
             
-            // 기록 ID 카운터 갱신 (가장 높은 ID + 1)
+            if(!db.sidebar_info) {
+                db.sidebar_info = { name: '우리팀 복무관리', logo_url: null };
+            }
+            
             let maxId = 0;
             db.records.forEach(r => {
                 if (r.id > maxId) maxId = r.id;
@@ -315,8 +322,9 @@ app.post('/admin/restore', (req, res) => {
 });
 
 app.get('/logout', (req, res) => {
-    currentUser = null;
-    res.redirect('/');
+    req.session.destroy(() => {
+        res.redirect('/');
+    });
 });
 
 app.listen(5000, '0.0.0.0', () => {
