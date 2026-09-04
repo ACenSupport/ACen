@@ -281,6 +281,39 @@ app.post('/admin/action', (req, res) => {
     res.redirect('/admin');
 });
 
+// 데이터 백업 (JSON 파일 다운로드)
+app.get('/admin/backup', (req, res) => {
+    if (!currentUser || !currentUser.is_admin) return res.status(403).send("권한이 없어.");
+    const backupData = JSON.stringify(db, null, 2);
+    res.setHeader('Content-disposition', 'attachment; filename=work_manage_backup.json');
+    res.setHeader('Content-type', 'application/json');
+    res.send(backupData);
+});
+
+// 데이터 복구 (JSON 데이터 업로드 및 덮어쓰기)
+app.post('/admin/restore', (req, res) => {
+    if (!currentUser || !currentUser.is_admin) return res.status(403).send("권한이 없어.");
+    try {
+        const backupData = JSON.parse(req.body.backup_data);
+        if (backupData && backupData.users && backupData.records) {
+            db = backupData;
+            
+            // 기록 ID 카운터 갱신 (가장 높은 ID + 1)
+            let maxId = 0;
+            db.records.forEach(r => {
+                if (r.id > maxId) maxId = r.id;
+            });
+            record_id_counter = maxId + 1;
+            
+            return res.send("<script>alert('데이터가 성공적으로 복구되었습니다.'); window.location.href='/admin';</script>");
+        } else {
+            return res.send("<script>alert('유효하지 않은 백업 파일입니다.'); history.back();</script>");
+        }
+    } catch (e) {
+        return res.send("<script>alert('파일을 읽거나 처리하는 중 오류가 발생했습니다.'); history.back();</script>");
+    }
+});
+
 app.get('/logout', (req, res) => {
     currentUser = null;
     res.redirect('/');
