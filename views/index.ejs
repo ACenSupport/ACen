@@ -83,17 +83,10 @@
     
     <style>
         body { font-family: 'NanumSquare', sans-serif !important; }
-
-        input[type="number"]::-webkit-outer-spin-button,
-        input[type="number"]::-webkit-inner-spin-button {
-            -webkit-appearance: none; margin: 0;
-        }
+        input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         input[type="number"] { -moz-appearance: textfield; }
-        
-        td.fc-day-sun a.fc-daygrid-day-number,
-        td.is-holiday a.fc-daygrid-day-number { color: #ef4444 !important; font-weight: 900 !important; }
+        td.fc-day-sun a.fc-daygrid-day-number, td.is-holiday a.fc-daygrid-day-number { color: #ef4444 !important; font-weight: 900 !important; }
         td.fc-day-sat a.fc-daygrid-day-number { color: #3b82f6 !important; font-weight: 900 !important; }
-        
         .fc-toolbar-title { font-weight: 800 !important; transition: color 0.2s; }
         .fc-toolbar-title:hover { color: #3b82f6 !important; }
 
@@ -111,13 +104,9 @@
             caret-color: transparent;
         }
         .main-date-picker:focus, .main-date-picker:active {
-            background: transparent !important;
-            outline: none !important;
-            box-shadow: none !important;
+            background: transparent !important; outline: none !important; box-shadow: none !important;
         }
-        .main-date-picker::selection {
-            background: transparent;
-        }
+        .main-date-picker::selection { background: transparent; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -130,44 +119,28 @@
             </div>
             
             <form id="form-login" action="/login" method="post" class="space-y-4">
-                <div>
-                    <input type="text" name="emp_id" placeholder="사번" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
-                </div>
-                <div>
-                    <input type="password" name="emp_pw" placeholder="비밀번호" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
-                </div>
+                <div><input type="text" name="emp_id" placeholder="사번" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50"></div>
+                <div><input type="password" name="emp_pw" placeholder="비밀번호" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50"></div>
                 <button type="submit" class="w-full bg-gray-900 text-white p-2.5 rounded-lg hover:bg-black font-medium transition">로그인</button>
-                <div class="text-right mt-2">
-                    <button type="button" onclick="switchTab('reset')" class="text-xs text-gray-500 hover:text-gray-900 underline">비밀번호를 잊으셨나요?</button>
-                </div>
+                <div class="text-right mt-2"><button type="button" onclick="switchTab('reset')" class="text-xs text-gray-500 hover:text-gray-900 underline">비밀번호를 잊으셨나요?</button></div>
             </form>
 
             <form id="form-signup" action="/signup" method="post" class="space-y-4 hidden" onsubmit="return validateSignup('signup')">
                 <input type="hidden" id="signup-id-checked" value="false">
-                <div>
-                    <input type="text" name="name" placeholder="이름" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
-                </div>
+                <div><input type="text" name="name" placeholder="이름" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50"></div>
                 <div class="flex space-x-2">
                     <input type="text" id="signup-emp-id" name="emp_id" placeholder="사번 (5~6자리 숫자)" required class="flex-1 border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50" onchange="document.getElementById('signup-id-checked').value='false'">
                     <button type="button" onclick="checkDuplicateId('signup')" class="bg-gray-200 text-gray-700 px-4 rounded-lg font-bold hover:bg-gray-300 transition shrink-0 whitespace-nowrap text-sm">중복확인</button>
                 </div>
-                <div>
-                    <input type="password" id="signup-pw" name="emp_pw" placeholder="비밀번호" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
-                </div>
-                <div>
-                    <input type="password" id="signup-pw-confirm" placeholder="비밀번호 확인" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
-                </div>
+                <div><input type="password" id="signup-pw" name="emp_pw" placeholder="비밀번호" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50"></div>
+                <div><input type="password" id="signup-pw-confirm" placeholder="비밀번호 확인" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50"></div>
                 <button type="submit" class="w-full bg-blue-600 text-white p-2.5 rounded-lg hover:bg-blue-700 font-medium transition">가입하기</button>
             </form>
 
             <form id="form-reset" action="/reset_pw_request" method="post" class="space-y-4 hidden">
                 <p class="text-xs text-gray-500 mb-4 text-center">이름과 사번을 입력하면 비밀번호가<br><span class="font-bold text-red-500">new1234@</span> 로 초기화됩니다.</p>
-                <div>
-                    <input type="text" name="name" placeholder="이름" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
-                </div>
-                <div>
-                    <input type="text" name="emp_id" placeholder="사번" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
-                </div>
+                <div><input type="text" name="name" placeholder="이름" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50"></div>
+                <div><input type="text" name="emp_id" placeholder="사번" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50"></div>
                 <button type="submit" class="w-full bg-red-500 text-white p-2.5 rounded-lg hover:bg-red-600 font-medium transition">비밀번호 초기화</button>
                 <button type="button" onclick="switchTab('login')" class="w-full mt-2 text-sm text-gray-500 hover:text-gray-900 transition">뒤로가기</button>
             </form>
@@ -182,6 +155,8 @@
                     <div class="flex items-center space-x-3 overflow-hidden">
                         <% if (sidebar_info.logo_url) { %>
                             <img src="<%= sidebar_info.logo_url %>" class="w-8 h-8 rounded object-cover">
+                        <% } else if (sidebar_info.emoji) { %>
+                            <div class="w-8 h-8 bg-gray-100 flex items-center justify-center rounded text-xl shrink-0"><%= sidebar_info.emoji %></div>
                         <% } else { %>
                             <div class="w-8 h-8 bg-gray-900 text-white flex items-center justify-center rounded font-bold text-sm shrink-0">복</div>
                         <% } %>
@@ -211,6 +186,8 @@
                     <div class="flex items-center space-x-3">
                         <% if (user && user.profile_img) { %>
                             <img src="<%= user.profile_img %>" class="w-8 h-8 rounded-full object-cover border border-gray-300">
+                        <% } else if (user && user.emoji) { %>
+                            <div class="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center text-lg"><%= user.emoji %></div>
                         <% } else { %>
                             <div class="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-sm font-bold"><%= user.name[0] %></div>
                         <% } %>
@@ -275,14 +252,12 @@
                             <div class="flex items-center space-x-3">
                                 <% if (item.profile_img) { %>
                                     <img src="<%= item.profile_img %>" class="w-10 h-10 rounded-full object-cover border border-gray-200">
+                                <% } else if (item.emoji) { %>
+                                    <div class="w-10 h-10 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-xl"><%= item.emoji %></div>
                                 <% } else { %>
-                                    <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-700 text-lg">
-                                        <%= item.name[0] %>
-                                    </div>
+                                    <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-700 text-lg"><%= item.name[0] %></div>
                                 <% } %>
-                                <div>
-                                    <p class="font-bold text-gray-900"><%= item.name %></p>
-                                </div>
+                                <div><p class="font-bold text-gray-900"><%= item.name %></p></div>
                             </div>
                             <%
                                 let bgClass = "bg-gray-50 text-gray-600 border-gray-100";
@@ -292,9 +267,7 @@
                                 else if (item.reason === '출장') bgClass = "bg-blue-50 text-blue-600 border-blue-100";
                                 else if (['공가', '장기근속휴가', '청원휴가'].includes(item.reason)) bgClass = "bg-pink-50 text-pink-600 border-pink-100";
                             %>
-                            <span class="px-2.5 py-1 text-xs font-bold rounded-md border <%= bgClass %>">
-                                <%= item.reason %>
-                            </span>
+                            <span class="px-2.5 py-1 text-xs font-bold rounded-md border <%= bgClass %>"><%= item.reason %></span>
                         </div>
                     </div>
                     <% }) %>
@@ -316,11 +289,10 @@
                         }
                     }
                 };
-
                 if(document.getElementById("main-date-picker")) {
                     flatpickr("#main-date-picker", Object.assign({}, fpConfigMain, {
                         disableMobile: "true",
-                        onChange: function(selectedDates, dateStr, instance) {
+                        onChange: function(selectedDates, dateStr) {
                             window.location.href = '/main?date=' + dateStr;
                         }
                     }));
@@ -377,7 +349,6 @@
                         <span id="picker-year" class="font-extrabold text-lg text-gray-900"></span>
                         <button type="button" onclick="changePickerYear(1)" class="text-gray-400 hover:text-black font-extrabold px-2">&gt;</button>
                     </div>
-                    
                     <div class="flex justify-between space-x-2 text-center font-bold text-sm">
                         <div class="flex flex-col flex-1 space-y-1">
                             <% for(let i=1; i<=6; i++) { %>
@@ -395,7 +366,7 @@
                 <script>
                     function openNewModal(dateStr) {
                         document.getElementById('modal-record-ids').value = '';
-                        document.getElementById('modal-title').innerText = '복무(부재) 기록 등록';
+                        document.getElementById('modal-title').innerText = '복무 기록 등록';
                         document.getElementById('btn-delete').classList.add('hidden');
                         document.getElementById('btn-update').classList.add('hidden');
                         document.getElementById('btn-register').classList.remove('hidden');
@@ -412,7 +383,7 @@
 
                     function openEditModal(event, dateStr) {
                         document.getElementById('modal-record-ids').value = event.id;
-                        document.getElementById('modal-title').innerText = '복무(부재) 기록 수정';
+                        document.getElementById('modal-title').innerText = '복무 기록 수정';
                         document.getElementById('btn-register').classList.add('hidden');
                         document.getElementById('btn-delete').classList.remove('hidden');
                         document.getElementById('btn-update').classList.remove('hidden');
@@ -646,9 +617,8 @@
                         </table>
                     </div>
                 </div>
-
             </main>
-            
+
             <% } else if (page === 'admin') { %>
             <header class="bg-white p-4 border-b flex justify-center items-center">
                 <span class="text-gray-800 font-bold text-xl">팀원 ID 관리</span>
@@ -725,7 +695,6 @@
                         </div>
                     </div>
                 </div>
-                
                 <script>
                     function submitRestore() {
                         const fileInput = document.getElementById('backup-file');
@@ -745,7 +714,7 @@
                 </script>
             </main>
 
-            <!-- 팀원 추가 모달 -->
+            <!-- 1. 팀원 추가 모달 -->
             <div id="admin-create-user-modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[100]">
                 <div class="bg-white p-8 rounded-2xl shadow-2xl w-[400px]">
                     <div class="flex justify-between items-center mb-6">
@@ -775,7 +744,7 @@
                 </div>
             </div>
             
-            <!-- 관리자 PW 직접 변경 모달 -->
+            <!-- 2. 관리자 PW 직접 변경 모달 -->
             <div id="admin-pw-modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[100]">
                 <div class="bg-white p-8 rounded-2xl shadow-2xl w-[400px]">
                     <div class="flex justify-between items-center mb-6">
@@ -804,12 +773,12 @@
             </script>
             <% } %>
 
-            <!-- 복원된 공통 팝업들 -->
+            <!-- 공통 모달 -->
             <!-- 1. 복무 입력 및 수정 모달 -->
-            <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[100]">
+            <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[200]">
                 <div class="bg-white p-8 rounded-2xl shadow-2xl w-[450px]">
                     <div class="flex justify-between items-center mb-6">
-                        <h3 id="modal-title" class="text-xl font-bold text-gray-900">복무(부재) 기록 등록</h3>
+                        <h3 id="modal-title" class="text-xl font-bold text-gray-900">복무 기록 등록</h3>
                         <button onclick="closeModal()" class="text-gray-400 hover:text-gray-900 font-bold text-xl">✕</button>
                     </div>
                     
@@ -865,37 +834,41 @@
                 </div>
             </div>
 
-            <!-- 2. 계정 정보 수정 모달 -->
-            <div id="profile-settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[100]">
+            <!-- 2. 계정 정보 수정 모달 (이모지 추가) -->
+            <div id="profile-settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[200]">
                 <div class="bg-white p-8 rounded-2xl shadow-2xl w-[400px]">
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-xl font-bold text-gray-900">계정 정보 수정</h3>
                         <button onclick="closeProfileModal()" class="text-gray-400 hover:text-gray-900 font-bold text-xl">✕</button>
                     </div>
-                    <form id="profile-settings-form" action="/update_profile" method="post" class="space-y-5">
+                    <form id="profile-settings-form" action="/update_profile" method="post" class="space-y-4">
                         <div>
-                            <label class="block text-sm font-bold text-gray-700 mb-2">사번 (수정불가)</label>
-                            <input type="text" value="<%= user.emp_id %>" readonly class="w-full border border-gray-300 p-2.5 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed">
+                            <label class="block text-sm font-bold text-gray-700 mb-1">사번 (수정불가)</label>
+                            <input type="text" value="<%= user.emp_id %>" readonly class="w-full border border-gray-300 p-2 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed">
                         </div>
                         <div>
-                            <label class="block text-sm font-bold text-gray-700 mb-2">프로필 사진 등록</label>
-                            <input type="file" id="profile_img_file" accept="image/*" onchange="convertImage(this, 'profile_img_base64')" class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black text-sm bg-gray-50">
+                            <label class="block text-sm font-bold text-gray-700 mb-1">이모지 프로필 (Win + .)</label>
+                            <input type="text" name="profile_emoji" placeholder="예: 👨‍💻" maxlength="2" class="w-full border border-gray-300 p-2 rounded-lg focus:outline-none focus:border-black bg-gray-50">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-1">또는 이미지 업로드</label>
+                            <input type="file" id="profile_img_file" accept="image/*" onchange="convertImage(this, 'profile_img_base64')" class="w-full border border-gray-300 p-2 rounded-lg focus:outline-none focus:border-black text-sm bg-gray-50">
                             <input type="hidden" id="profile_img_base64" name="profile_img_base64">
                             
-                            <label class="flex items-center space-x-2 cursor-pointer mt-3">
+                            <label class="flex items-center space-x-2 cursor-pointer mt-2">
                                 <input type="checkbox" name="reset_profile_img" value="yes" class="w-4 h-4 text-gray-900 border-gray-300 rounded focus:ring-gray-900">
-                                <span class="text-sm text-gray-600 font-medium">기본 이미지로 변경</span>
+                                <span class="text-sm text-gray-600 font-medium">기본 프로필로 초기화 (이미지/이모지 삭제)</span>
                             </label>
                         </div>
-                        <div class="border-t border-gray-100 pt-4">
-                            <label class="block text-sm font-bold text-gray-700 mb-2">기존 비밀번호</label>
-                            <input type="password" name="current_pw" placeholder="비밀번호를 변경할 경우 입력" class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50 mb-3">
-                            <label class="block text-sm font-bold text-gray-700 mb-2">바꿀 비밀번호</label>
-                            <input type="password" name="new_pw" placeholder="새 비밀번호 입력" class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50 mb-3">
-                            <label class="block text-sm font-bold text-gray-700 mb-2">바꿀 비밀번호 확인</label>
-                            <input type="password" name="confirm_pw" placeholder="새 비밀번호 다시 입력" class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
+                        <div class="border-t border-gray-100 pt-3 mt-2">
+                            <label class="block text-sm font-bold text-gray-700 mb-1">기존 비밀번호</label>
+                            <input type="password" name="current_pw" placeholder="변경 시에만 입력" class="w-full border border-gray-300 p-2 rounded-lg focus:outline-none focus:border-black bg-gray-50 mb-2">
+                            <label class="block text-sm font-bold text-gray-700 mb-1">바꿀 비밀번호</label>
+                            <input type="password" name="new_pw" placeholder="새 비밀번호" class="w-full border border-gray-300 p-2 rounded-lg focus:outline-none focus:border-black bg-gray-50 mb-2">
+                            <label class="block text-sm font-bold text-gray-700 mb-1">비밀번호 확인</label>
+                            <input type="password" name="confirm_pw" placeholder="새 비밀번호 확인" class="w-full border border-gray-300 p-2 rounded-lg focus:outline-none focus:border-black bg-gray-50">
                         </div>
-                        <div class="flex justify-end space-x-2 pt-4 border-t border-gray-100">
+                        <div class="flex justify-end space-x-2 pt-3 border-t border-gray-100">
                             <button type="button" onclick="closeProfileModal()" class="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50">취소</button>
                             <button type="submit" class="px-5 py-2.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-black">수정하기</button>
                         </div>
@@ -903,27 +876,31 @@
                 </div>
             </div>
 
-            <!-- 3. 사이드바 설정 모달 -->
+            <!-- 3. 사이드바 설정 모달 (이모지 추가) -->
             <% if (user && user.is_admin) { %>
-            <div id="sidebar-settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[100]">
+            <div id="sidebar-settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[200]">
                 <div class="bg-white p-8 rounded-2xl shadow-2xl w-[400px]">
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-xl font-bold text-gray-900">사이드바 설정</h3>
                         <button onclick="document.getElementById('sidebar-settings-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-900 font-bold text-xl">✕</button>
                     </div>
-                    <form id="sidebar-settings-form" action="/update_sidebar" method="post" class="space-y-5">
+                    <form id="sidebar-settings-form" action="/update_sidebar" method="post" class="space-y-4">
                         <div>
-                            <label class="block text-sm font-bold text-gray-700 mb-2">팀 이름 변경</label>
+                            <label class="block text-sm font-bold text-gray-700 mb-1">팀 이름 변경</label>
                             <input type="text" name="team_name" value="<%= sidebar_info.name %>" class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black">
                         </div>
                         <div>
-                            <label class="block text-sm font-bold text-gray-700 mb-2">로고 이미지 업로드</label>
-                            <input type="file" id="logo_file" accept="image/*" onchange="convertImage(this, 'logo_base64')" class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black text-sm bg-gray-50">
+                            <label class="block text-sm font-bold text-gray-700 mb-1">이모지 로고 (Win + .)</label>
+                            <input type="text" name="sidebar_emoji" placeholder="예: 🏖️" maxlength="2" class="w-full border border-gray-300 p-2 rounded-lg focus:outline-none focus:border-black bg-gray-50">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-1">또는 이미지 업로드</label>
+                            <input type="file" id="logo_file" accept="image/*" onchange="convertImage(this, 'logo_base64')" class="w-full border border-gray-300 p-2 rounded-lg focus:outline-none focus:border-black text-sm bg-gray-50">
                             <input type="hidden" id="logo_base64" name="logo_base64">
                             
                             <label class="flex items-center space-x-2 cursor-pointer mt-3">
                                 <input type="checkbox" name="reset_logo" value="yes" class="w-4 h-4 text-gray-900 border-gray-300 rounded focus:ring-gray-900">
-                                <span class="text-sm text-gray-600 font-medium">기본 로고로 변경</span>
+                                <span class="text-sm text-gray-600 font-medium">기본 로고로 초기화 (이미지/이모지 삭제)</span>
                             </label>
                         </div>
                         <div class="flex justify-end space-x-2 pt-4 border-t border-gray-100">
@@ -951,9 +928,12 @@
                     document.getElementById('profile_img_base64').value = '';
                 }
                 function closeSidebarModal() {
-                    document.getElementById('sidebar-settings-modal').classList.add('hidden');
-                    document.getElementById('sidebar-settings-form').reset();
-                    document.getElementById('logo_base64').value = '';
+                    let modal = document.getElementById('sidebar-settings-modal');
+                    if(modal) modal.classList.add('hidden');
+                    let form = document.getElementById('sidebar-settings-form');
+                    if(form) form.reset();
+                    let logo = document.getElementById('logo_base64');
+                    if(logo) logo.value = '';
                 }
             </script>
             
