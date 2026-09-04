@@ -29,6 +29,15 @@ let db = {
 };
 let record_id_counter = 1;
 
+// 2026년 기준 공휴일 배열 (서버 및 클라이언트 모두 사용)
+const holidays = [
+    '2026-01-01', '2026-02-16', '2026-02-17', '2026-02-18', 
+    '2026-03-01', '2026-03-02', '2026-05-05', '2026-05-24', 
+    '2026-05-25', '2026-06-06', '2026-08-15', '2026-08-17', 
+    '2026-09-24', '2026-09-25', '2026-09-26', '2026-10-03', 
+    '2026-10-09', '2026-12-25'
+];
+
 function getLeaveDays(startStr, endStr) {
     let start = new Date(startStr);
     let end = new Date(endStr);
@@ -36,7 +45,9 @@ function getLeaveDays(startStr, endStr) {
     let current = new Date(start);
     while (current <= end) {
         let dayOfWeek = current.getDay();
-        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        let dateStr = current.toISOString().split('T')[0];
+        // 주말(0,6) 및 공휴일 제외하고 평일 영업일만 카운트
+        if (dayOfWeek !== 0 && dayOfWeek !== 6 && !holidays.includes(dateStr)) {
             days += 1;
         }
         current.setDate(current.getDate() + 1);
@@ -45,7 +56,7 @@ function getLeaveDays(startStr, endStr) {
 }
 
 app.get('/', (req, res) => {
-    res.render('index', { page: 'login', sidebar_info: db.sidebar_info, user: req.session.user });
+    res.render('index', { page: 'login', sidebar_info: db.sidebar_info, user: req.session.user, holidays });
 });
 
 app.post('/login', (req, res) => {
@@ -76,6 +87,16 @@ app.post('/signup', (req, res) => {
     }
     db.users[emp_id] = { pw: emp_pw, name: name, is_admin: false, leave: 15.0, profile_img: null };
     res.send("<script>alert('회원가입이 완료되었습니다.'); window.location.href='/';</script>");
+});
+
+app.post('/admin/create_user', (req, res) => {
+    if (!req.session.user || !req.session.user.is_admin) return res.status(403).send("권한이 없어.");
+    const { emp_id, emp_pw, name } = req.body;
+    if (db.users[emp_id]) {
+        return res.send("<script>alert('이미 존재하는 사번입니다.'); history.back();</script>");
+    }
+    db.users[emp_id] = { pw: emp_pw, name: name, is_admin: false, leave: 15.0, profile_img: null };
+    res.send("<script>alert('팀원 계정이 성공적으로 생성되었습니다.'); window.location.href='/admin';</script>");
 });
 
 app.post('/reset_pw_request', (req, res) => {
@@ -187,33 +208,114 @@ app.get('/main', (req, res) => {
         trip_cnt,
         sidebar_info: db.sidebar_info,
         total_members: team_members.length,
-        team_members
+        team_members,
+        holidays
     });
 });
 
 app.get('/calendar', (req, res) => {
     if (!req.session.user) return res.redirect('/');
-    let fc_records = db.records.map(r => {
+    
+    let current_date = req.query.date || new Date().toISOString().split('T')[0];
+    let mergedRecords = [];
+    let skipMerge = ['오전반차', '오후반차'];
+    let groups = {};
+
+    // 1. 사람 & 사유별로 그룹화
+    db.records.forEach(r => {
+        let key = r.name + '_' + r.reason;
+        // 반차는 무조건 개별 기록 유지
+        if (skipMerge.includes(r.reason)) key = r.id; 
+        if (!groups[key]) groups[key] = [];
+        groups[key].push({...r});
+    });
+
+    // 2. 그룹 내에서 연속된 날짜 병합
+    for (let k in groups) {
+        let arr = groups[k];
+        arr.sort((a,b) => a.start_date.localeCompare(b.start_date));
+        
+        let current = arr[0];
+        let currentIds = [current.id];
+
+        for (let i = 1; i < arr.length; i++) {
+            let next = arr[i];
+            
+            // 현재 종료일 다음 영업일 계산
+            let nextBizD = new Date(current.end_date);
+            do {
+                nextBizD.setDate(nextBizD.getDate() + 1);
+            } while (nextBizD.getDay() === 0 || nextBizD.getDay() === 6 || holidays.includes(nextBizD.toISOString().split('T')[0]));
+            let nextBizStr = nextBizD.toISOString().split('T')[0];
+
+            // 현재 종료일 단순 다음 날
+            let nextDayD = new Date(current.end_date);
+            nextDayD.setDate(nextDayD.getDate() + 1);
+            let nextDayStr = nextDayD.toISOString().split('T')[0];
+
+            // 이어지는 휴가라면 병합
+            if (next.start_date <= nextDayStr || next.start_date === nextBizStr || next.start_date <= current.end_date) {
+                if (next.end_date > current.end_date) {
+                    current.end_date = next.end_date;
+                }
+                currentIds.push(next.id);
+            } else {
+                current.id = currentIds.join(',');
+                mergedRecords.push(current);
+                current = next;
+                currentIds = [current.id];
+            }
+        }
+        current.id = currentIds.join(',');
+        mergedRecords.push(current);
+    }
+
+    let fc_records = mergedRecords.map(r => {
         let endDateObj = new Date(r.end_date);
         endDateObj.setDate(endDateObj.getDate() + 1);
         return {
-            id: r.id,
+            id: String(r.id),
             name: r.name,
             reason: r.reason,
             start_date: r.start_date,
             end_date_fc: endDateObj.toISOString().split('T')[0]
         };
     });
+
     let team_members = Object.values(db.users).map(u => u.name);
-    res.render('index', { page: 'calendar', user: req.session.user, records: fc_records, team_members, sidebar_info: db.sidebar_info });
+    res.render('index', { 
+        page: 'calendar', 
+        user: req.session.user, 
+        records: fc_records, 
+        team_members, 
+        sidebar_info: db.sidebar_info,
+        current_date,
+        holidays
+    });
 });
 
 app.post('/submit', (req, res) => {
     if (!req.session.user) return res.redirect('/');
-    const { member, reason, start_date, end_date } = req.body;
+    const { member, reason, start_date, end_date, current_calendar_date } = req.body;
+    
+    // [V9] 일반 직원은 다른 사람의 복무를 등록할 수 없음
+    if (!req.session.user.is_admin && member !== req.session.user.name) {
+        return res.send("<script>alert('타인의 복무는 등록/수정할 수 없습니다.'); history.back();</script>");
+    }
+
     if (start_date > end_date) {
         return res.send("<script>alert('종료일이 시작일보다 빠를 수 없어.'); history.back();</script>");
     }
+
+    // [V9] 중복된 날짜 검증
+    let hasOverlap = db.records.some(r => {
+        return r.name === member && (start_date <= r.end_date && end_date >= r.start_date);
+    });
+
+    if (hasOverlap) {
+        return res.send("<script>alert('해당 일자에 등록된 복무가 있습니다.'); history.back();</script>");
+    }
+
     db.records.push({
         id: record_id_counter++,
         name: member,
@@ -221,14 +323,29 @@ app.post('/submit', (req, res) => {
         start_date,
         end_date
     });
-    res.redirect('/calendar');
+    
+    let dateParam = current_calendar_date ? '?date=' + current_calendar_date : '';
+    res.redirect('/calendar' + dateParam);
 });
 
-app.get('/delete/:id', (req, res) => {
+app.get('/delete/:ids', (req, res) => {
     if (!req.session.user) return res.redirect('/');
-    let id = parseInt(req.params.id);
-    db.records = db.records.filter(r => r.id !== id);
-    res.redirect('/calendar');
+    
+    let ids = req.params.ids.split(',').map(id => parseInt(id));
+    let recordsToDelete = db.records.filter(r => ids.includes(r.id));
+    
+    // [V9] 관리자가 아니면 타인의 복무를 삭제할 수 없음
+    if (!req.session.user.is_admin) {
+        let isForeign = recordsToDelete.some(r => r.name !== req.session.user.name);
+        if (isForeign) {
+            return res.send("<script>alert('타인의 복무는 취소할 수 없습니다.'); history.back();</script>");
+        }
+    }
+
+    db.records = db.records.filter(r => !ids.includes(r.id));
+    
+    let dateParam = req.query.date ? '?date=' + req.query.date : '';
+    res.redirect('/calendar' + dateParam);
 });
 
 app.get('/leave_status', (req, res) => {
@@ -252,7 +369,7 @@ app.get('/leave_status', (req, res) => {
         };
     }
     let team_members = Object.values(db.users).map(u => u.name);
-    res.render('index', { page: 'leave', user: req.session.user, leave_data, team_members, sidebar_info: db.sidebar_info });
+    res.render('index', { page: 'leave', user: req.session.user, leave_data, team_members, sidebar_info: db.sidebar_info, holidays });
 });
 
 app.post('/update_leave', (req, res) => {
@@ -267,7 +384,7 @@ app.post('/update_leave', (req, res) => {
 app.get('/admin', (req, res) => {
     if (!req.session.user || !req.session.user.is_admin) return res.send("<script>alert('관리자만 접근 가능합니다.'); history.back();</script>");
     let team_members = Object.values(db.users).map(u => u.name);
-    res.render('index', { page: 'admin', user: req.session.user, users: db.users, team_members, sidebar_info: db.sidebar_info });
+    res.render('index', { page: 'admin', user: req.session.user, users: db.users, team_members, sidebar_info: db.sidebar_info, holidays });
 });
 
 app.post('/admin/action', (req, res) => {
@@ -298,7 +415,6 @@ app.post('/admin/restore', (req, res) => {
     if (!req.session.user || !req.session.user.is_admin) return res.status(403).send("권한이 없어.");
     try {
         const backupData = JSON.parse(req.body.backup_data);
-        // sidebar_info 포함 검증 및 복원
         if (backupData && backupData.users && backupData.records) {
             db = backupData;
             

@@ -21,7 +21,8 @@
         .is-holiday .fc-daygrid-day-number, .is-holiday a { color: #ef4444 !important; font-weight: bold; }
         .fc-daygrid-day-number { font-weight: 800 !important; font-size: 1.1rem; text-decoration: none !important; }
         
-        .fc-toolbar-title { font-weight: 800 !important; }
+        .fc-toolbar-title { font-weight: 800 !important; transition: color 0.2s; }
+        .fc-toolbar-title:hover { color: #3b82f6 !important; }
 
         .main-date-picker {
             background: transparent !important;
@@ -68,14 +69,14 @@
                 </div>
             </form>
 
-            <form id="form-signup" action="/signup" method="post" class="space-y-4 hidden" onsubmit="return validateSignup(event)">
-                <input type="hidden" id="id-checked" value="false">
+            <form id="form-signup" action="/signup" method="post" class="space-y-4 hidden" onsubmit="return validateSignup('signup')">
+                <input type="hidden" id="signup-id-checked" value="false">
                 <div>
                     <input type="text" name="name" placeholder="이름" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
                 </div>
                 <div class="flex space-x-2">
-                    <input type="text" id="signup-emp-id" name="emp_id" placeholder="사번 (5~6자리 숫자)" required class="flex-1 border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50" onchange="document.getElementById('id-checked').value='false'">
-                    <button type="button" onclick="checkDuplicateId()" class="bg-gray-200 text-gray-700 px-4 rounded-lg font-bold hover:bg-gray-300 transition shrink-0 whitespace-nowrap text-sm">중복확인</button>
+                    <input type="text" id="signup-emp-id" name="emp_id" placeholder="사번 (5~6자리 숫자)" required class="flex-1 border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50" onchange="document.getElementById('signup-id-checked').value='false'">
+                    <button type="button" onclick="checkDuplicateId('signup')" class="bg-gray-200 text-gray-700 px-4 rounded-lg font-bold hover:bg-gray-300 transition shrink-0 whitespace-nowrap text-sm">중복확인</button>
                 </div>
                 <div>
                     <input type="password" id="signup-pw" name="emp_pw" placeholder="비밀번호" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
@@ -119,8 +120,8 @@
             }
         }
 
-        async function checkDuplicateId() {
-            const emp_id = document.getElementById('signup-emp-id').value;
+        async function checkDuplicateId(prefix) {
+            const emp_id = document.getElementById(prefix + '-emp-id').value;
             if(!/^\d{5,6}$/.test(emp_id)) {
                 alert('사번을 확인해 주세요.');
                 return;
@@ -133,30 +134,30 @@
             const data = await res.json();
             if(data.exists) {
                 alert('이미 사용중인 사번입니다.');
-                document.getElementById('id-checked').value = 'false';
+                document.getElementById(prefix + '-id-checked').value = 'false';
             } else {
                 alert('사용 가능한 사번입니다.');
-                document.getElementById('id-checked').value = 'true';
+                document.getElementById(prefix + '-id-checked').value = 'true';
             }
         }
 
-        function validateSignup(e) {
-            const emp_id = document.getElementById('signup-emp-id').value;
-            const checked = document.getElementById('id-checked').value;
-            const pw1 = document.getElementById('signup-pw').value;
-            const pw2 = document.getElementById('signup-pw-confirm').value;
+        function validateSignup(prefix) {
+            const emp_id = document.getElementById(prefix + '-emp-id').value;
+            const checked = document.getElementById(prefix + '-id-checked').value;
+            const pw1 = document.getElementById(prefix + '-pw').value;
+            const pw2 = document.getElementById(prefix + '-pw-confirm').value;
 
             if(!/^\d{5,6}$/.test(emp_id)) {
                 alert('사번을 확인해 주세요.');
-                e.preventDefault(); return false;
+                event.preventDefault(); return false;
             }
             if(checked !== 'true') {
                 alert('사번 중복확인을 해주세요.');
-                e.preventDefault(); return false;
+                event.preventDefault(); return false;
             }
             if(pw1 !== pw2) {
                 alert('비밀번호가 일치하지 않습니다.');
-                e.preventDefault(); return false;
+                event.preventDefault(); return false;
             }
             return true;
         }
@@ -313,15 +314,26 @@
                         <h1 class="text-3xl font-extrabold text-gray-900">캘린더</h1>
                     </div>
                 </div>
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative">
+                    <!-- 미니 달력을 띄울 숨김 input -->
+                    <input type="text" id="fc-date-picker" class="hidden absolute top-0 left-0">
                     <div id="calendar"></div>
                 </div>
 
                 <script>
                     document.addEventListener('DOMContentLoaded', function() {
                         var calendarEl = document.getElementById('calendar');
+                        
+                        var fp = flatpickr("#fc-date-picker", {
+                            locale: "ko",
+                            onChange: function(selectedDates, dateStr) {
+                                calendar.gotoDate(dateStr);
+                            }
+                        });
+
                         var calendar = new FullCalendar.Calendar(calendarEl, {
                             initialView: 'dayGridMonth',
+                            initialDate: '<%= current_date %>',
                             height: 'auto',
                             titleFormat: function(date) {
                                 return date.date.year + '.' + String(date.date.month + 1).padStart(2, '0');
@@ -343,8 +355,36 @@
                                 document.getElementById('modal').classList.remove('hidden');
                             },
                             eventClick: function(info) {
+                                let isAdmin = <%= user && user.is_admin ? 'true' : 'false' %>;
+                                let currentUserName = "<%= user.name %>";
+                                
+                                // 본인 데이터이거나 관리자인지 확인 (클라이언트 사이드 검증)
+                                if (!isAdmin && !info.event.title.startsWith(currentUserName + " ")) {
+                                    alert('타인의 복무는 취소할 수 없습니다.');
+                                    return;
+                                }
+
                                 if(confirm("선택한 날짜의 복무를 취소 할까요?")) {
-                                    window.location.href = '/delete/' + info.event.id;
+                                    // [V9] 화면을 옮기지 않고 현재 달력을 유지하기 위해 표시중인 달력을 가져옴
+                                    let cd = calendar.getDate();
+                                    let currentMonth = cd.getFullYear() + '-' + String(cd.getMonth() + 1).padStart(2, '0') + '-01';
+                                    window.location.href = '/delete/' + info.event.id + '?date=' + currentMonth;
+                                }
+                            },
+                            datesSet: function(info) {
+                                // [V9] 달력이 넘어가거나 세팅될 때 현재 보고있는 달을 기억 (calendar.getDate() 사용)
+                                let cd = calendar.getDate();
+                                let currentMonth = cd.getFullYear() + '-' + String(cd.getMonth() + 1).padStart(2, '0') + '-01';
+                                
+                                let hiddenInput = document.getElementById('current_calendar_date');
+                                if (hiddenInput) hiddenInput.value = currentMonth;
+
+                                // 캘린더 타이틀(연.월) 클릭 시 미니 달력 호출
+                                let titleEl = document.querySelector('.fc-toolbar-title');
+                                if (titleEl) {
+                                    titleEl.style.cursor = 'pointer';
+                                    titleEl.title = '클릭하여 다른 날짜로 이동';
+                                    titleEl.onclick = function() { fp.open(); };
                                 }
                             },
                             dayCellDidMount: function(arg) {
@@ -352,11 +392,7 @@
                                 let dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
                                 
                                 const holidays = [
-                                    '2026-01-01', '2026-02-16', '2026-02-17', '2026-02-18', 
-                                    '2026-03-01', '2026-03-02', '2026-05-05', '2026-05-24', 
-                                    '2026-05-25', '2026-06-06', '2026-08-15', '2026-08-17', 
-                                    '2026-09-24', '2026-09-25', '2026-09-26', '2026-10-03', 
-                                    '2026-10-09', '2026-12-25'
+                                    <% holidays.forEach(function(h) { %>'<%= h %>',<% }) %>
                                 ];
                                 
                                 if(holidays.includes(dateStr)) {
@@ -368,11 +404,11 @@
                     });
 
                     function getColor(reason) {
-                        if (reason === '연차') return '#a855f7';
-                        if (reason.includes('반차')) return '#f97316';
-                        if (reason === '출장') return '#3b82f6';
-                        if (['공가', '장기근속휴가', '청원휴가'].includes(reason)) return '#ec4899';
-                        return '#10b981';
+                        if (reason === '연차') return '#a855f7'; // 보라색
+                        if (reason.includes('반차')) return '#f97316'; // 주황색
+                        if (reason === '출장') return '#3b82f6'; // 파란색
+                        if (['공가', '장기근속휴가', '청원휴가'].includes(reason)) return '#ec4899'; // 분홍색
+                        return '#10b981'; // 기본 초록
                     }
                 </script>
             </main>
@@ -450,6 +486,9 @@
                     <div>
                         <h1 class="text-3xl font-extrabold text-gray-900">ID 관리</h1>
                     </div>
+                    <button onclick="document.getElementById('admin-create-user-modal').classList.remove('hidden')" class="bg-blue-600 text-white px-5 py-2.5 rounded-lg font-bold hover:bg-blue-700 transition">
+                        + 팀원 추가
+                    </button>
                 </div>
 
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-8">
@@ -534,7 +573,38 @@
                     }
                 </script>
             </main>
+
+            <!-- 팀원 추가 모달 -->
+            <div id="admin-create-user-modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+                <div class="bg-white p-8 rounded-2xl shadow-2xl w-[400px]">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold text-gray-900">팀원 추가 (계정 생성)</h3>
+                        <button onclick="document.getElementById('admin-create-user-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-900 font-bold text-xl">✕</button>
+                    </div>
+                    <form action="/admin/create_user" method="post" class="space-y-4" onsubmit="return validateSignup('admin-create')">
+                        <input type="hidden" id="admin-create-id-checked" value="false">
+                        <div>
+                            <input type="text" name="name" placeholder="이름" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
+                        </div>
+                        <div class="flex space-x-2">
+                            <input type="text" id="admin-create-emp-id" name="emp_id" placeholder="사번 (5~6자리 숫자)" required class="flex-1 border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50" onchange="document.getElementById('admin-create-id-checked').value='false'">
+                            <button type="button" onclick="checkDuplicateId('admin-create')" class="bg-gray-200 text-gray-700 px-4 rounded-lg font-bold hover:bg-gray-300 transition shrink-0 whitespace-nowrap text-sm">중복확인</button>
+                        </div>
+                        <div>
+                            <input type="password" id="admin-create-pw" name="emp_pw" placeholder="초기 비밀번호" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
+                        </div>
+                        <div>
+                            <input type="password" id="admin-create-pw-confirm" placeholder="비밀번호 확인" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
+                        </div>
+                        <div class="flex justify-end space-x-2 pt-4">
+                            <button type="button" onclick="document.getElementById('admin-create-user-modal').classList.add('hidden')" class="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50">취소</button>
+                            <button type="submit" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">생성하기</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
             
+            <!-- 관리자 PW 직접 변경 모달 -->
             <div id="admin-pw-modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
                 <div class="bg-white p-8 rounded-2xl shadow-2xl w-[400px]">
                     <div class="flex justify-between items-center mb-6">
@@ -563,6 +633,7 @@
             </script>
             <% } %>
 
+            <!-- 복무 입력 모달 -->
             <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
                 <div class="bg-white p-8 rounded-2xl shadow-2xl w-[450px]">
                     <div class="flex justify-between items-center mb-6">
@@ -571,6 +642,7 @@
                     </div>
                     
                     <form action="/submit" method="post" class="space-y-5">
+                        <input type="hidden" name="current_calendar_date" id="current_calendar_date">
                         <div>
                             <label class="block text-sm font-bold text-gray-700 mb-2">대상 팀원</label>
                             <select name="member" class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
