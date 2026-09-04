@@ -29,13 +29,20 @@ let db = {
 };
 let record_id_counter = 1;
 
-// 2026년 기준 공휴일 배열 (서버 및 클라이언트 모두 사용)
+// [V11/V12] 2026년 기준 대한민국 완벽한 공휴일 + 대체공휴일 + 지방선거 반영
 const holidays = [
-    '2026-01-01', '2026-02-16', '2026-02-17', '2026-02-18', 
-    '2026-03-01', '2026-03-02', '2026-05-05', '2026-05-24', 
-    '2026-05-25', '2026-06-06', '2026-08-15', '2026-08-17', 
-    '2026-09-24', '2026-09-25', '2026-09-26', '2026-10-03', 
-    '2026-10-09', '2026-12-25'
+    '2026-01-01', // 신정
+    '2026-02-16', '2026-02-17', '2026-02-18', // 설날
+    '2026-03-01', '2026-03-02', // 삼일절 및 대체공휴일
+    '2026-05-05', // 어린이날
+    '2026-05-24', '2026-05-25', // 부처님오신날 및 대체공휴일
+    '2026-06-03', // 제9회 전국동시지방선거
+    '2026-06-06', // 현충일
+    '2026-08-15', '2026-08-17', // 광복절 및 대체공휴일
+    '2026-09-24', '2026-09-25', '2026-09-26', '2026-09-28', // 추석 및 대체공휴일
+    '2026-10-03', '2026-10-05', // 개천절 및 대체공휴일
+    '2026-10-09', // 한글날
+    '2026-12-25' // 기독탄신일
 ];
 
 function getLeaveDays(startStr, endStr) {
@@ -46,7 +53,7 @@ function getLeaveDays(startStr, endStr) {
     while (current <= end) {
         let dayOfWeek = current.getDay();
         let dateStr = current.getFullYear() + '-' + String(current.getMonth() + 1).padStart(2, '0') + '-' + String(current.getDate()).padStart(2, '0');
-        // 주말(0,6) 및 공휴일 제외하고 평일 영업일만 카운트
+        // 주말(0,6) 및 공휴일(대체공휴일 포함) 제외하고 평일 영업일만 카운트
         if (dayOfWeek !== 0 && dayOfWeek !== 6 && !holidays.includes(dateStr)) {
             days += 1;
         }
@@ -194,7 +201,6 @@ app.get('/main', (req, res) => {
         else if (status === '출장') { working_cnt--; trip_cnt++; }
     }
 
-    // [V10] 이번 달 영업일 계산
     let t_date = new Date(target_date_str);
     let m_year = t_date.getFullYear();
     let m_month = t_date.getMonth(); 
@@ -240,16 +246,13 @@ app.get('/calendar', (req, res) => {
     let skipMerge = ['오전반차', '오후반차'];
     let groups = {};
 
-    // 1. 사람 & 사유별로 그룹화
     db.records.forEach(r => {
         let key = r.name + '_' + r.reason;
-        // 반차는 무조건 개별 기록 유지
         if (skipMerge.includes(r.reason)) key = r.id; 
         if (!groups[key]) groups[key] = [];
         groups[key].push({...r});
     });
 
-    // 2. 그룹 내에서 연속된 날짜 병합
     for (let k in groups) {
         let arr = groups[k];
         arr.sort((a,b) => a.start_date.localeCompare(b.start_date));
@@ -260,19 +263,16 @@ app.get('/calendar', (req, res) => {
         for (let i = 1; i < arr.length; i++) {
             let next = arr[i];
             
-            // 현재 종료일 다음 영업일 계산
             let nextBizD = new Date(current.end_date);
             do {
                 nextBizD.setDate(nextBizD.getDate() + 1);
             } while (nextBizD.getDay() === 0 || nextBizD.getDay() === 6 || holidays.includes(nextBizD.getFullYear() + '-' + String(nextBizD.getMonth() + 1).padStart(2, '0') + '-' + String(nextBizD.getDate()).padStart(2, '0')));
             let nextBizStr = nextBizD.getFullYear() + '-' + String(nextBizD.getMonth() + 1).padStart(2, '0') + '-' + String(nextBizD.getDate()).padStart(2, '0');
 
-            // 현재 종료일 단순 다음 날
             let nextDayD = new Date(current.end_date);
             nextDayD.setDate(nextDayD.getDate() + 1);
             let nextDayStr = nextDayD.getFullYear() + '-' + String(nextDayD.getMonth() + 1).padStart(2, '0') + '-' + String(nextDayD.getDate()).padStart(2, '0');
 
-            // 이어지는 휴가라면 병합
             if (next.start_date <= nextDayStr || next.start_date === nextBizStr || next.start_date <= current.end_date) {
                 if (next.end_date > current.end_date) {
                     current.end_date = next.end_date;
@@ -298,6 +298,7 @@ app.get('/calendar', (req, res) => {
             name: r.name,
             reason: r.reason,
             start_date: r.start_date,
+            end_date: r.end_date, // 원본 end_date 유지
             end_date_fc: endDateFcStr
         };
     });
@@ -316,9 +317,8 @@ app.get('/calendar', (req, res) => {
 
 app.post('/submit', (req, res) => {
     if (!req.session.user) return res.redirect('/');
-    const { member, reason, start_date, end_date, current_calendar_date } = req.body;
+    const { member, reason, start_date, end_date, current_calendar_date, record_ids } = req.body;
     
-    // [V9] 일반 직원은 다른 사람의 복무를 등록할 수 없음
     if (!req.session.user.is_admin && member !== req.session.user.name) {
         return res.send("<script>alert('타인의 복무는 등록/수정할 수 없습니다.'); history.back();</script>");
     }
@@ -327,13 +327,21 @@ app.post('/submit', (req, res) => {
         return res.send("<script>alert('종료일이 시작일보다 빠를 수 없어.'); history.back();</script>");
     }
 
-    // [V9] 중복된 날짜 검증
+    let editIds = record_ids ? record_ids.split(',').map(id => parseInt(id)) : [];
+
+    // 중복 검증 (수정 중인 본인 ID들은 제외하고 검사)
     let hasOverlap = db.records.some(r => {
+        if (editIds.includes(r.id)) return false; 
         return r.name === member && (start_date <= r.end_date && end_date >= r.start_date);
     });
 
     if (hasOverlap) {
         return res.send("<script>alert('해당 일자에 등록된 복무가 있습니다.'); history.back();</script>");
+    }
+
+    // 수정 모드인 경우 기존 ID 데이터 삭제
+    if (editIds.length > 0) {
+        db.records = db.records.filter(r => !editIds.includes(r.id));
     }
 
     db.records.push({
@@ -354,7 +362,6 @@ app.get('/delete/:ids', (req, res) => {
     let ids = req.params.ids.split(',').map(id => parseInt(id));
     let recordsToDelete = db.records.filter(r => ids.includes(r.id));
     
-    // [V9] 관리자가 아니면 타인의 복무를 삭제할 수 없음
     if (!req.session.user.is_admin) {
         let isForeign = recordsToDelete.some(r => r.name !== req.session.user.name);
         if (isForeign) {
@@ -377,6 +384,7 @@ app.get('/leave_status', (req, res) => {
         let u = db.users[eid];
         monthly_usage[eid] = { 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0, 10:0, 11:0, 12:0 };
         leave_data[eid] = {
+            eid: eid,
             name: u.name,
             granted: u.leave,
             used: 0,
@@ -385,14 +393,12 @@ app.get('/leave_status', (req, res) => {
     }
     
     db.records.forEach(r => {
-        // 총 사용량 계산
         let eid = Object.keys(db.users).find(k => db.users[k].name === r.name);
         if(eid) {
             let days = getLeaveDays(r.start_date, r.end_date);
             if (r.reason === '연차') leave_data[eid].used += 1.0 * days;
             else if (['오전반차', '오후반차'].includes(r.reason)) leave_data[eid].used += 0.5 * days;
             
-            // 월별 사용량 계산
             if (['연차', '오전반차', '오후반차'].includes(r.reason)) {
                 let current = new Date(r.start_date);
                 let end = new Date(r.end_date);
@@ -414,6 +420,7 @@ app.get('/leave_status', (req, res) => {
         leave_data[eid].remaining = leave_data[eid].granted - leave_data[eid].used;
     }
     
+    let leave_data_list = Object.values(leave_data);
     let monthly_data_for_view = [];
     for (let eid in db.users) {
         monthly_data_for_view.push({
@@ -422,11 +429,24 @@ app.get('/leave_status', (req, res) => {
         });
     }
 
+    const fixedOrder = ['이재성', '강지혜', '최현진', '서우주'];
+    function sortUsers(a, b) {
+        let idxA = fixedOrder.indexOf(a.name);
+        let idxB = fixedOrder.indexOf(b.name);
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        if (idxA !== -1) return -1;
+        if (idxB !== -1) return 1;
+        return 0;
+    }
+    
+    leave_data_list.sort(sortUsers);
+    monthly_data_for_view.sort(sortUsers);
+
     let team_members = Object.values(db.users).map(u => u.name);
     res.render('index', { 
         page: 'leave', 
         user: req.session.user, 
-        leave_data, 
+        leave_data_list, 
         team_members, 
         sidebar_info: db.sidebar_info, 
         holidays,

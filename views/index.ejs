@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title><%= sidebar_info.name %></title>
-    <!-- [V10] 네이버 나눔스퀘어 폰트 추가 -->
+    <!-- 네이버 나눔스퀘어 폰트 추가 -->
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/gh/moonspam/NanumSquare@2.0/nanumsquare.css">
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -12,8 +12,70 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/ko.js"></script>
     
+    <script>
+        function switchTab(tab) {
+            document.getElementById('form-login').classList.add('hidden');
+            document.getElementById('form-signup').classList.add('hidden');
+            document.getElementById('form-reset').classList.add('hidden');
+            
+            document.getElementById('tab-login').className = 'flex-1 pb-3 text-center font-bold text-gray-400 hover:text-gray-900 border-b-2 border-transparent';
+            document.getElementById('tab-signup').className = 'flex-1 pb-3 text-center font-bold text-gray-400 hover:text-gray-900 border-b-2 border-transparent';
+            
+            if (tab === 'login') {
+                document.getElementById('form-login').classList.remove('hidden');
+                document.getElementById('tab-login').className = 'flex-1 pb-3 text-center font-bold text-gray-900 border-b-2 border-gray-900';
+            } else if (tab === 'signup') {
+                document.getElementById('form-signup').classList.remove('hidden');
+                document.getElementById('tab-signup').className = 'flex-1 pb-3 text-center font-bold text-gray-900 border-b-2 border-gray-900';
+            } else if (tab === 'reset') {
+                document.getElementById('form-reset').classList.remove('hidden');
+            }
+        }
+
+        async function checkDuplicateId(prefix) {
+            const emp_id = document.getElementById(prefix + '-emp-id').value;
+            if(!/^\d{5,6}$/.test(emp_id)) {
+                alert('사번을 확인해 주세요.');
+                return;
+            }
+            const res = await fetch('/api/check_id', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({emp_id: emp_id})
+            });
+            const data = await res.json();
+            if(data.exists) {
+                alert('이미 사용중인 사번입니다.');
+                document.getElementById(prefix + '-id-checked').value = 'false';
+            } else {
+                alert('사용 가능한 사번입니다.');
+                document.getElementById(prefix + '-id-checked').value = 'true';
+            }
+        }
+
+        function validateSignup(prefix) {
+            const emp_id = document.getElementById(prefix + '-emp-id').value;
+            const checked = document.getElementById(prefix + '-id-checked').value;
+            const pw1 = document.getElementById(prefix + '-pw').value;
+            const pw2 = document.getElementById(prefix + '-pw-confirm').value;
+
+            if(!/^\d{5,6}$/.test(emp_id)) {
+                alert('사번을 확인해 주세요.');
+                event.preventDefault(); return false;
+            }
+            if(checked !== 'true') {
+                alert('사번 중복확인을 해주세요.');
+                event.preventDefault(); return false;
+            }
+            if(pw1 !== pw2) {
+                alert('비밀번호가 일치하지 않습니다.');
+                event.preventDefault(); return false;
+            }
+            return true;
+        }
+    </script>
+    
     <style>
-        /* [V10] 전체 글꼴 나눔스퀘어로 덮어쓰기 */
         body { font-family: 'NanumSquare', sans-serif !important; }
 
         input[type="number"]::-webkit-outer-spin-button,
@@ -106,68 +168,6 @@
             </form>
         </div>
     </div>
-    <script>
-        function switchTab(tab) {
-            document.getElementById('form-login').classList.add('hidden');
-            document.getElementById('form-signup').classList.add('hidden');
-            document.getElementById('form-reset').classList.add('hidden');
-            
-            document.getElementById('tab-login').className = 'flex-1 pb-3 text-center font-bold text-gray-400 hover:text-gray-900 border-b-2 border-transparent';
-            document.getElementById('tab-signup').className = 'flex-1 pb-3 text-center font-bold text-gray-400 hover:text-gray-900 border-b-2 border-transparent';
-            
-            if (tab === 'login') {
-                document.getElementById('form-login').classList.remove('hidden');
-                document.getElementById('tab-login').className = 'flex-1 pb-3 text-center font-bold text-gray-900 border-b-2 border-gray-900';
-            } else if (tab === 'signup') {
-                document.getElementById('form-signup').classList.remove('hidden');
-                document.getElementById('tab-signup').className = 'flex-1 pb-3 text-center font-bold text-gray-900 border-b-2 border-gray-900';
-            } else if (tab === 'reset') {
-                document.getElementById('form-reset').classList.remove('hidden');
-            }
-        }
-
-        async function checkDuplicateId(prefix) {
-            const emp_id = document.getElementById(prefix + '-emp-id').value;
-            if(!/^\d{5,6}$/.test(emp_id)) {
-                alert('사번을 확인해 주세요.');
-                return;
-            }
-            const res = await fetch('/api/check_id', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({emp_id: emp_id})
-            });
-            const data = await res.json();
-            if(data.exists) {
-                alert('이미 사용중인 사번입니다.');
-                document.getElementById(prefix + '-id-checked').value = 'false';
-            } else {
-                alert('사용 가능한 사번입니다.');
-                document.getElementById(prefix + '-id-checked').value = 'true';
-            }
-        }
-
-        function validateSignup(prefix) {
-            const emp_id = document.getElementById(prefix + '-emp-id').value;
-            const checked = document.getElementById(prefix + '-id-checked').value;
-            const pw1 = document.getElementById(prefix + '-pw').value;
-            const pw2 = document.getElementById(prefix + '-pw-confirm').value;
-
-            if(!/^\d{5,6}$/.test(emp_id)) {
-                alert('사번을 확인해 주세요.');
-                event.preventDefault(); return false;
-            }
-            if(checked !== 'true') {
-                alert('사번 중복확인을 해주세요.');
-                event.preventDefault(); return false;
-            }
-            if(pw1 !== pw2) {
-                alert('비밀번호가 일치하지 않습니다.');
-                event.preventDefault(); return false;
-            }
-            return true;
-        }
-    </script>
     
     <% } else { %>
     <div class="flex h-screen overflow-hidden">
@@ -190,14 +190,14 @@
                     <% } %>
                 </div>
                 <nav class="mt-6 px-4 space-y-2">
-                    <a href="/main" class="block py-2.5 px-4 rounded transition font-medium <% if (page === 'main') { %>bg-gray-100 font-bold text-black border-2 border-gray-900 shadow-sm<% } else { %>hover:bg-gray-50 text-gray-600<% } %>">복무 현황</a>
-                    <a href="/calendar" class="block py-2.5 px-4 rounded transition font-medium <% if (page === 'calendar') { %>bg-gray-100 font-bold text-black border-2 border-gray-900 shadow-sm<% } else { %>hover:bg-gray-50 text-gray-600<% } %>">캘린더</a>
-                    <a href="/leave_status" class="block py-2.5 px-4 rounded transition font-medium <% if (page === 'leave') { %>bg-gray-100 font-bold text-black border-2 border-gray-900 shadow-sm<% } else { %>hover:bg-gray-50 text-gray-600<% } %>">연차 잔여 현황</a>
+                    <a href="/main" class="block py-2.5 px-4 rounded transition font-bold <% if (page === 'main') { %>bg-gray-100 font-extrabold text-black border-2 border-gray-900 shadow-sm<% } else { %>hover:bg-gray-50 text-gray-800<% } %>">복무 현황</a>
+                    <a href="/calendar" class="block py-2.5 px-4 rounded transition font-bold <% if (page === 'calendar') { %>bg-gray-100 font-extrabold text-black border-2 border-gray-900 shadow-sm<% } else { %>hover:bg-gray-50 text-gray-800<% } %>">캘린더</a>
+                    <a href="/leave_status" class="block py-2.5 px-4 rounded transition font-bold <% if (page === 'leave') { %>bg-gray-100 font-extrabold text-black border-2 border-gray-900 shadow-sm<% } else { %>hover:bg-gray-50 text-gray-800<% } %>">연차 잔여 현황</a>
                     
                     <% if (user && user.is_admin) { %>
                     <hr class="my-4 border-gray-200">
-                    <p class="px-4 text-xs font-bold text-gray-400 mb-2 tracking-wider">ADMINISTRATION</p>
-                    <a href="/admin" class="block py-2.5 px-4 rounded transition font-medium <% if (page === 'admin') { %>bg-gray-100 font-bold text-black border-2 border-gray-900 shadow-sm<% } else { %>hover:bg-gray-50 text-gray-600<% } %>">팀원 ID 관리</a>
+                    <p class="px-4 text-xs font-extrabold text-gray-400 mb-2 tracking-wider">ADMINISTRATION</p>
+                    <a href="/admin" class="block py-2.5 px-4 rounded transition font-bold <% if (page === 'admin') { %>bg-gray-100 font-extrabold text-black border-2 border-gray-900 shadow-sm<% } else { %>hover:bg-gray-50 text-gray-800<% } %>">팀원 ID 관리</a>
                     <% } %>
                 </nav>
             </div>
@@ -241,7 +241,6 @@
                 <div class="flex justify-between items-end mb-8">
                     <div>
                         <h1 class="text-3xl font-extrabold text-gray-900">복무 현황</h1>
-                        <!-- [V10] 이번 달 영업일 수 표기 -->
                         <p class="text-sm text-gray-500 mt-2 font-bold"><%= Number(current_date.split('-')[1]) %>월 기준 영업일: <span class="text-blue-600"><%= current_month_biz_days %>일</span></p>
                     </div>
                 </div>
@@ -323,12 +322,57 @@
                     </div>
                 </div>
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative">
-                    <!-- [V10] 숨김 input: opacity-0과 absolute로 자리만 차지하게 두어 달력 타이틀 밑에 완벽히 팝업되도록 설정 -->
                     <input type="text" id="fc-date-picker" style="width:0; height:0; border:0; padding:0; position:absolute; top:0; left:0; opacity:0; pointer-events:none;">
                     <div id="calendar"></div>
                 </div>
 
                 <script>
+                    function openNewModal(dateStr) {
+                        document.getElementById('modal-record-ids').value = '';
+                        document.getElementById('modal-title').innerText = '복무(부재) 기록 등록';
+                        document.getElementById('btn-delete').classList.add('hidden');
+                        document.getElementById('btn-update').classList.add('hidden');
+                        document.getElementById('btn-register').classList.remove('hidden');
+                        
+                        document.getElementById('modal-start-date')._flatpickr.setDate(dateStr);
+                        document.getElementById('modal-end-date')._flatpickr.setDate(dateStr);
+                        
+                        let currentUserName = "<%= user.name %>";
+                        let memberSelect = document.querySelector('select[name="member"]');
+                        memberSelect.value = currentUserName;
+                        
+                        document.getElementById('modal').classList.remove('hidden');
+                    }
+
+                    function openEditModal(event, dateStr) {
+                        document.getElementById('modal-record-ids').value = event.id;
+                        document.getElementById('modal-title').innerText = '복무(부재) 기록 수정';
+                        document.getElementById('btn-register').classList.add('hidden');
+                        document.getElementById('btn-delete').classList.remove('hidden');
+                        document.getElementById('btn-update').classList.remove('hidden');
+                        
+                        let props = event.extendedProps;
+                        document.querySelector('select[name="member"]').value = props.name;
+                        document.querySelector('select[name="reason"]').value = props.reason;
+                        
+                        document.getElementById('modal-start-date')._flatpickr.setDate(props.orig_start);
+                        document.getElementById('modal-end-date')._flatpickr.setDate(props.orig_end);
+                        
+                        document.getElementById('modal').classList.remove('hidden');
+                    }
+
+                    function deleteEvent() {
+                        let ids = document.getElementById('modal-record-ids').value;
+                        let currentMonth = document.getElementById('current_calendar_date').value;
+                        if(confirm("정말 이 복무 기록을 삭제하시겠습니까?")) {
+                            window.location.href = '/delete/' + ids + '?date=' + currentMonth;
+                        }
+                    }
+
+                    function closeModal() {
+                        document.getElementById('modal').classList.add('hidden');
+                    }
+
                     document.addEventListener('DOMContentLoaded', function() {
                         var calendarEl = document.getElementById('calendar');
                         
@@ -353,28 +397,32 @@
                                     title: '<%= r.name %> <%= r.reason %>', 
                                     start: '<%= r.start_date %>',
                                     end: '<%= r.end_date_fc %>', 
-                                    color: getColor('<%= r.reason %>')
+                                    color: getColor('<%= r.reason %>'),
+                                    extendedProps: {
+                                        name: '<%= r.name %>',
+                                        reason: '<%= r.reason %>',
+                                        orig_start: '<%= r.start_date %>',
+                                        orig_end: '<%= r.end_date %>'
+                                    }
                                 },
                                 <% }) %>
                             ],
+                            // [V12] 빈칸 클릭 시 등록 팝업
                             dateClick: function(info) {
-                                document.getElementById('modal-start-date')._flatpickr.setDate(info.dateStr);
-                                document.getElementById('modal-end-date')._flatpickr.setDate(info.dateStr);
-                                document.getElementById('modal').classList.remove('hidden');
+                                openNewModal(info.dateStr);
                             },
+                            // [V12] 등록된 이벤트 클릭 시 수정 컨펌 후 수정 팝업
                             eventClick: function(info) {
                                 let isAdmin = <%= user && user.is_admin ? 'true' : 'false' %>;
                                 let currentUserName = "<%= user.name %>";
                                 
-                                if (!isAdmin && !info.event.title.startsWith(currentUserName + " ")) {
-                                    alert('타인의 복무는 취소할 수 없습니다.');
+                                if (!isAdmin && info.event.extendedProps.name !== currentUserName) {
+                                    alert('타인의 복무는 수정/취소할 수 없습니다.');
                                     return;
                                 }
 
-                                if(confirm("선택한 날짜의 복무를 취소 할까요?")) {
-                                    let cd = calendar.getDate();
-                                    let currentMonth = cd.getFullYear() + '-' + String(cd.getMonth() + 1).padStart(2, '0') + '-01';
-                                    window.location.href = '/delete/' + info.event.id + '?date=' + currentMonth;
+                                if(confirm("수정하시겠습니까?")) {
+                                    openEditModal(info.event, info.dateStr);
                                 }
                             },
                             datesSet: function(info) {
@@ -386,7 +434,6 @@
 
                                 let titleEl = document.querySelector('.fc-toolbar-title');
                                 if (titleEl) {
-                                    // [V10] positionElement를 타이틀로 강제 지정하여 바로 밑에 뜨게 함
                                     fp.set('positionElement', titleEl);
                                     titleEl.style.cursor = 'pointer';
                                     titleEl.title = '클릭하여 다른 날짜로 이동';
@@ -443,13 +490,13 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <% for (let eid in leave_data) { let l = leave_data[eid]; %>
+                            <% leave_data_list.forEach(function(l) { %>
                             <tr class="border-b border-gray-50 hover:bg-gray-50 transition">
                                 <td class="p-4 font-medium"><%= l.name %></td>
                                 <td class="p-4">
                                     <% if (user && user.is_admin) { %>
                                     <form action="/update_leave" method="post" class="flex items-center space-x-2">
-                                        <input type="hidden" name="emp_id" value="<%= eid %>">
+                                        <input type="hidden" name="emp_id" value="<%= l.eid %>">
                                         <input type="number" name="granted" value="<%= l.granted %>" class="w-20 border border-gray-300 rounded p-1.5 text-center focus:border-black outline-none" step="0.5">
                                         <button type="submit" class="text-sm bg-gray-200 hover:bg-gray-300 px-3 py-1.5 rounded font-medium transition">수정</button>
                                     </form>
@@ -463,7 +510,6 @@
                                         let barPct = pct > 100 ? 100 : pct;
                                         let barColor = pct >= 80 ? 'bg-green-500' : 'bg-blue-500';
                                     %>
-                                    <!-- [V10] 현재 몇 퍼센트인지 표시 -->
                                     <div class="flex justify-between items-center mb-1">
                                         <span class="text-xs font-bold text-gray-600">진행률</span>
                                         <span class="text-xs font-bold text-gray-900"><%= pct.toFixed(1) %>%</span>
@@ -481,12 +527,11 @@
                                 <td class="p-4 font-medium text-gray-600"><%= l.used %></td>
                                 <td class="p-4 font-bold text-blue-600 text-lg"><%= l.remaining %></td>
                             </tr>
-                            <% } %>
+                            <% }) %>
                         </tbody>
                     </table>
                 </div>
 
-                <!-- [V10] 월별 연차 사용 내역 (표 추가) -->
                 <div>
                     <div class="flex justify-between items-end mb-4">
                         <h2 class="text-2xl font-extrabold text-gray-900">월별 연차 사용 내역</h2>
@@ -675,16 +720,19 @@
             </script>
             <% } %>
 
-            <!-- 복무 입력 모달 -->
+            <!-- 복무 입력 및 수정 모달 -->
             <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
                 <div class="bg-white p-8 rounded-2xl shadow-2xl w-[450px]">
                     <div class="flex justify-between items-center mb-6">
-                        <h3 class="text-xl font-bold text-gray-900">복무(부재) 기록 등록</h3>
-                        <button onclick="document.getElementById('modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-900 font-bold text-xl">✕</button>
+                        <h3 id="modal-title" class="text-xl font-bold text-gray-900">복무(부재) 기록 등록</h3>
+                        <button onclick="closeModal()" class="text-gray-400 hover:text-gray-900 font-bold text-xl">✕</button>
                     </div>
                     
                     <form action="/submit" method="post" class="space-y-5">
                         <input type="hidden" name="current_calendar_date" id="current_calendar_date">
+                        <!-- [V12] 수정을 위한 기존 데이터 ID 임시 보관 -->
+                        <input type="hidden" name="record_ids" id="modal-record-ids">
+                        
                         <div>
                             <label class="block text-sm font-bold text-gray-700 mb-2">대상 팀원</label>
                             <select name="member" class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
@@ -722,9 +770,13 @@
                                 <input type="text" id="modal-end-date" name="end_date" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-white flatpickr-input">
                             </div>
                         </div>
+                        
+                        <!-- [V12] 버튼 3개 분리 구현 (취소, 삭제, 등록/수정) -->
                         <div class="flex justify-end space-x-2 pt-4 border-t border-gray-100">
-                            <button type="button" onclick="document.getElementById('modal').classList.add('hidden')" class="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50">취소</button>
-                            <button type="submit" class="px-5 py-2.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-black">등록하기</button>
+                            <button type="button" onclick="closeModal()" class="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50">취소</button>
+                            <button type="button" id="btn-delete" onclick="deleteEvent()" class="hidden px-5 py-2.5 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600">삭제</button>
+                            <button type="submit" id="btn-register" class="px-5 py-2.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-black">등록하기</button>
+                            <button type="submit" id="btn-update" class="hidden px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">수정하기</button>
                         </div>
                     </form>
                 </div>
