@@ -501,9 +501,10 @@ app.get('/leave_status', async (req, res) => {
     leave_data_list.sort(sortUsers);
     monthly_data_for_view.sort(sortUsers);
 
+    let team_members = users.map(u => u.name);
     res.render('index', { 
         page: 'leave', user: req.session.user, leave_data_list, 
-        team_members: users.map(u => u.name), sidebar_info, holidays, monthly_data_for_view
+        team_members, sidebar_info, holidays, monthly_data_for_view
     });
 });
 
@@ -519,7 +520,8 @@ app.get('/admin', async (req, res) => {
     let db_users = {};
     users.forEach(u => db_users[u.emp_id] = u);
     let sidebar_info = await Sidebar.findOne({key: 'sidebar'}).lean() || { name: '우리팀 복무관리', logo_url: null, emoji: null };
-    res.render('index', { page: 'admin', user: req.session.user, users: db_users, team_members: users.map(u => u.name), sidebar_info, holidays });
+    let team_members = users.map(u => u.name);
+    res.render('index', { page: 'admin', user: req.session.user, users: db_users, team_members, sidebar_info, holidays });
 });
 
 app.post('/admin/action', async (req, res) => {
@@ -532,12 +534,14 @@ app.post('/admin/action', async (req, res) => {
     res.redirect('/admin');
 });
 
-// [V31] 게시판(회선정보) 데이터 조회 라우터
+// [V32] 게시판(회선정보) 데이터 조회 라우터 (team_members 누락 수정)
 app.get('/board_line', async (req, res) => {
     if (!req.session.user) return res.redirect('/');
+    let users = await User.find().lean();
+    let team_members = users.map(u => u.name);
     let sidebar_info = await Sidebar.findOne({key: 'sidebar'}).lean() || { name: '우리팀 복무관리', logo_url: null, emoji: null };
     let lines = await LineInfo.find().lean(); // DB에서 회선정보 모두 가져오기
-    res.render('index', { page: 'board_line', user: req.session.user, sidebar_info, lines });
+    res.render('index', { page: 'board_line', user: req.session.user, sidebar_info, lines, team_members, holidays });
 });
 
 // [V31] 게시판(회선정보) 엑셀 업로드 처리 API
