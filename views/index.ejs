@@ -86,12 +86,10 @@
         input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         input[type="number"] { -moz-appearance: textfield; }
         
-        /* FullCalendar 기본 공휴일/주말 스타일 (현재 달 기준) */
         td.fc-day-sun:not(.fc-day-other) a.fc-daygrid-day-number, 
         td.is-holiday:not(.fc-day-other) a.fc-daygrid-day-number { color: #ef4444 !important; font-weight: 900 !important; }
         td.fc-day-sat:not(.fc-day-other) a.fc-daygrid-day-number { color: #3b82f6 !important; font-weight: 900 !important; }
 
-        /* [V29] FullCalendar의 이번 달이 아닌 주말/공휴일을 흐리게 처리 */
         td.fc-day-other.fc-day-sun a.fc-daygrid-day-number,
         td.fc-day-other.is-holiday a.fc-daygrid-day-number { color: rgba(239, 68, 68, 0.4) !important; font-weight: normal !important; }
         td.fc-day-other.fc-day-sat a.fc-daygrid-day-number { color: rgba(59, 130, 246, 0.4) !important; font-weight: normal !important; }
@@ -99,6 +97,55 @@
         .fc-toolbar-title { font-weight: 800 !important; transition: color 0.2s; }
         .fc-toolbar-title:hover { color: #3b82f6 !important; }
 
+        /* [V30] Flatpickr 달력 헤더 (연도/월 선택) 투박함 개선 */
+        .flatpickr-months {
+            padding-top: 8px !important;
+            padding-bottom: 8px !important;
+        }
+        .flatpickr-current-month {
+            font-family: 'NanumSquare', sans-serif !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 5px;
+            font-size: 1.15rem !important;
+            padding-top: 5px !important;
+        }
+        /* 월 선택 드롭다운 디자인 다듬기 */
+        .flatpickr-current-month .flatpickr-monthDropdown-months {
+            font-weight: 800 !important;
+            color: #1f2937 !important;
+            background-color: transparent !important;
+            border-radius: 8px !important;
+            padding: 4px 8px !important;
+            outline: none !important;
+            cursor: pointer !important;
+            appearance: none;
+            -webkit-appearance: none;
+        }
+        .flatpickr-current-month .flatpickr-monthDropdown-months:hover {
+            background-color: #f3f4f6 !important;
+        }
+        /* 연도 입력칸 디자인 다듬기 (화살표 제거) */
+        .flatpickr-current-month .numInputWrapper {
+            width: 75px !important;
+            border-radius: 8px !important;
+        }
+        .flatpickr-current-month .numInputWrapper:hover {
+            background-color: #f3f4f6 !important;
+        }
+        .flatpickr-current-month input.cur-year {
+            font-weight: 800 !important;
+            color: #1f2937 !important;
+            padding: 4px !important;
+            cursor: text !important;
+        }
+        .flatpickr-current-month .numInputWrapper span.arrowUp,
+        .flatpickr-current-month .numInputWrapper span.arrowDown {
+            display: none !important; /* 거슬리는 화살표 숨김 */
+        }
+        
+        /* 메인 페이지 전용 텍스트 트리거 디자인 */
         .main-date-picker {
             background: transparent !important;
             border: none !important;
@@ -290,7 +337,6 @@
                     onDayCreate: function(dObj, dStr, fp, dayElem) {
                         let d = dayElem.dateObj;
                         let dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-                        // [V29] 이번 달이 아닌 날짜인지 확인
                         let isOutMonth = dayElem.classList.contains('prevMonthDay') || dayElem.classList.contains('nextMonthDay');
                         
                         if (d.getDay() === 0 || globalHolidays.includes(dateStr)) {
@@ -323,7 +369,7 @@
                         picker.classList.remove('hidden');
                         const titleRect = event.target.getBoundingClientRect();
                         picker.style.top = (titleRect.bottom + 5) + 'px';
-                        picker.style.left = (titleRect.left + (titleRect.width / 2) - 120) + 'px'; 
+                        picker.style.left = (titleRect.left + (titleRect.width / 2) - 125) + 'px'; 
                     } else {
                         picker.classList.add('hidden');
                     }
@@ -356,21 +402,26 @@
                     <div id="calendar"></div>
                 </div>
 
-                <div id="custom-month-picker" class="hidden fixed bg-white shadow-2xl rounded-2xl border border-gray-200 p-4 z-[150] w-[240px]">
-                    <div class="flex justify-between items-center mb-3 border-b border-gray-100 pb-2">
-                        <button type="button" onclick="changePickerYear(-1)" class="text-gray-400 hover:text-black font-extrabold px-2">&lt;</button>
-                        <span id="picker-year" class="font-extrabold text-lg text-gray-900"></span>
-                        <button type="button" onclick="changePickerYear(1)" class="text-gray-400 hover:text-black font-extrabold px-2">&gt;</button>
+                <!-- [V30] 커스텀 미니 달력(월 선택기) 둥글고 세련되게 디자인 개선 -->
+                <div id="custom-month-picker" class="hidden fixed bg-white shadow-[0_10px_40px_rgba(0,0,0,0.1)] rounded-3xl border border-gray-100 p-5 z-[150] w-[260px] transform transition-all">
+                    <div class="flex justify-between items-center mb-4 pb-3 border-b border-gray-100/50">
+                        <button type="button" onclick="changePickerYear(-1)" class="text-gray-400 hover:text-gray-800 hover:bg-gray-50 w-8 h-8 rounded-full flex items-center justify-center transition duration-200">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
+                        </button>
+                        <span id="picker-year" class="font-extrabold text-xl text-gray-800 tracking-tight"></span>
+                        <button type="button" onclick="changePickerYear(1)" class="text-gray-400 hover:text-gray-800 hover:bg-gray-50 w-8 h-8 rounded-full flex items-center justify-center transition duration-200">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                        </button>
                     </div>
-                    <div class="flex justify-between space-x-2 text-center font-bold text-sm">
-                        <div class="flex flex-col flex-1 space-y-1">
+                    <div class="flex justify-between space-x-3 text-center font-bold text-[0.95rem]">
+                        <div class="flex flex-col flex-1 space-y-1.5">
                             <% for(let i=1; i<=6; i++) { %>
-                                <button type="button" onclick="selectMonth(<%= i %>)" class="py-2 rounded-xl hover:bg-gray-100 text-gray-700 hover:text-black transition"><%= i %>월</button>
+                                <button type="button" onclick="selectMonth(<%= i %>)" class="py-2.5 rounded-xl text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition duration-200"><%= i %>월</button>
                             <% } %>
                         </div>
-                        <div class="flex flex-col flex-1 space-y-1">
+                        <div class="flex flex-col flex-1 space-y-1.5">
                             <% for(let i=7; i<=12; i++) { %>
-                                <button type="button" onclick="selectMonth(<%= i %>)" class="py-2 rounded-xl hover:bg-gray-100 text-gray-700 hover:text-black transition"><%= i %>월</button>
+                                <button type="button" onclick="selectMonth(<%= i %>)" class="py-2.5 rounded-xl text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition duration-200"><%= i %>월</button>
                             <% } %>
                         </div>
                     </div>
@@ -435,7 +486,6 @@
                             onDayCreate: function(dObj, dStr, fp, dayElem) {
                                 let d = dayElem.dateObj;
                                 let dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-                                // [V29] 팝업 미니달력에서도 이번 달이 아닌 날짜 확인
                                 let isOutMonth = dayElem.classList.contains('prevMonthDay') || dayElem.classList.contains('nextMonthDay');
                                 
                                 if (d.getDay() === 0 || globalHolidays.includes(dateStr)) {
