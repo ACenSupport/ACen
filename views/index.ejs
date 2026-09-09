@@ -171,7 +171,7 @@
                 <nav class="mt-6 px-4 space-y-2">
                     <a href="/main" class="block py-2.5 px-4 rounded transition font-bold <% if (page === 'main') { %>bg-gray-100 font-extrabold text-black border-2 border-gray-900 shadow-sm<% } else { %>hover:bg-gray-50 text-gray-800<% } %>">복무 현황</a>
                     <a href="/calendar" class="block py-2.5 px-4 rounded transition font-bold <% if (page === 'calendar') { %>bg-gray-100 font-extrabold text-black border-2 border-gray-900 shadow-sm<% } else { %>hover:bg-gray-50 text-gray-800<% } %>">캘린더</a>
-                    <a href="/leave_status" class="block py-2.5 px-4 rounded transition font-bold <% if (page === 'leave') { %>bg-gray-100 font-extrabold text-black border-2 border-gray-900 shadow-sm<% } else { %>hover:bg-gray-50 text-gray-800<% } %>">연차 사용 현황</a>
+                    <a href="/leave_status" class="block py-2.5 px-4 rounded transition font-bold <% if (page === 'leave') { %>bg-gray-100 font-extrabold text-black border-2 border-gray-900 shadow-sm<% } else { %>hover:bg-gray-50 text-gray-800<% } %>">연차 잔여 현황</a>
                     
                     <% if (user && user.is_admin) { %>
                     <hr class="my-4 border-gray-200">
@@ -559,7 +559,8 @@
                                     <span class="p-2"><%= l.granted %></span>
                                     <% } %>
                                 </td>
-                                <td class="p-4">
+                                <!-- [V26] 소진율 막대그래프 디자인 개편 -->
+                                <td class="p-4 pb-6">
                                     <% 
                                         let pct = l.granted > 0 ? (l.used / l.granted) * 100 : 0;
                                         let barPct = pct > 100 ? 100 : pct;
@@ -567,16 +568,16 @@
                                     %>
                                     <div class="flex justify-between items-center mb-1">
                                         <span class="text-xs font-bold text-gray-600">진행률</span>
-                                        <span class="text-xs font-bold text-gray-900"><%= pct.toFixed(1) %>%</span>
                                     </div>
-                                    <div class="relative w-full h-4 bg-gray-200 rounded overflow-hidden">
+                                    <div class="relative w-full h-5 bg-gray-200 rounded overflow-hidden shadow-inner">
                                         <div class="absolute top-0 left-0 h-full <%= barColor %> transition-all duration-500" style="width: <%= barPct %>%;"></div>
                                         <div class="absolute top-0 h-full border-r-2 border-red-500 z-10" style="left: 80%;"></div>
+                                        <div class="absolute inset-0 flex items-center justify-center z-20">
+                                            <span class="text-xs font-extrabold text-white" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.5);"><%= pct.toFixed(1) %>%</span>
+                                        </div>
                                     </div>
-                                    <div class="flex justify-between text-xs mt-1 text-gray-500">
-                                        <span>0%</span>
-                                        <span class="text-red-500 font-bold">80%</span>
-                                        <span>100%</span>
+                                    <div class="relative w-full mt-1 h-4">
+                                        <span class="absolute top-0 text-xs font-bold text-red-500" style="left: 80%; transform: translateX(-50%);">80%</span>
                                     </div>
                                 </td>
                                 <td class="p-4 font-medium text-gray-600"><%= l.used %></td>
