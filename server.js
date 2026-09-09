@@ -22,12 +22,12 @@ mongoose.connect(MONGO_URI)
     .then(() => console.log('MongoDB 연결 완료'))
     .catch(err => console.error('MongoDB 연결 에러:', err));
 
-// [MongoDB 스키마] 연락처(phone) 추가
+// [MongoDB 스키마]
 const UserSchema = new mongoose.Schema({
     emp_id: { type: String, required: true, unique: true },
     pw: { type: String, required: true },
     name: { type: String, required: true },
-    phone: { type: String, default: '' }, // 연락처 추가
+    phone: { type: String, default: '' },
     is_admin: { type: Boolean, default: false },
     leave: { type: Number, default: 15.0 },
     profile_img: { type: String, default: null },
@@ -143,15 +143,24 @@ app.post('/admin/create_user', async (req, res) => {
     res.redirect('/admin');
 });
 
+// [V28] 연락처 수정 추가 기능 (관리자 전용)
+app.post('/admin/update_phone', async (req, res) => {
+    if (!req.session.user || !req.session.user.is_admin) return res.status(403).send("권한이 없어.");
+    const { emp_id, phone } = req.body;
+    await User.updateOne({ emp_id }, { phone: phone });
+    res.redirect('/admin');
+});
+
 app.post('/reset_pw_request', async (req, res) => {
     const { emp_id, name, phone } = req.body;
-    // 연락처(phone)까지 일치해야 비밀번호 초기화 진행
     const user = await User.findOne({ emp_id, name, phone });
     if (user) {
         user.pw = 'new1234@';
         await user.save();
-        return res.send("<script>alert('비밀번호가 [new1234@]로 초기화되었습니다.'); window.location.href='/';</script>");
+        // [V28] 성공 시 문구 변경
+        return res.send("<script>alert('비밀번호가 초기화 되었습니다. 초기화 비밀번호는 [new1234@] 입니다.'); window.location.href='/';</script>");
     }
+    // 실패 시 문구는 기존과 동일하게 "정보가 일치하지 않습니다." 처리
     res.send("<script>alert('정보가 일치하지 않습니다.'); history.back();</script>");
 });
 
