@@ -52,6 +52,13 @@ const SidebarSchema = new mongoose.Schema({
 });
 const Sidebar = mongoose.model('Sidebar', SidebarSchema);
 
+// [V31] 게시판 회선정보 스키마 추가
+const LineInfoSchema = new mongoose.Schema({
+    id: { type: String, required: true, unique: true },
+    data: { type: Object, required: true }
+});
+const LineInfo = mongoose.model('LineInfo', LineInfoSchema);
+
 async function initDB() {
     try {
         const admin = await User.findOne({ emp_id: '60514' });
@@ -143,7 +150,6 @@ app.post('/admin/create_user', async (req, res) => {
     res.redirect('/admin');
 });
 
-// [V28] 연락처 수정 추가 기능 (관리자 전용)
 app.post('/admin/update_phone', async (req, res) => {
     if (!req.session.user || !req.session.user.is_admin) return res.status(403).send("권한이 없어.");
     const { emp_id, phone } = req.body;
@@ -157,10 +163,8 @@ app.post('/reset_pw_request', async (req, res) => {
     if (user) {
         user.pw = 'new1234@';
         await user.save();
-        // [V28] 성공 시 문구 변경
         return res.send("<script>alert('비밀번호가 초기화 되었습니다. 초기화 비밀번호는 [new1234@] 입니다.'); window.location.href='/';</script>");
     }
-    // 실패 시 문구는 기존과 동일하게 "정보가 일치하지 않습니다." 처리
     res.send("<script>alert('정보가 일치하지 않습니다.'); history.back();</script>");
 });
 
@@ -527,6 +531,59 @@ app.post('/admin/action', async (req, res) => {
     else if (action === 'change_pw') await User.updateOne({ emp_id }, { pw: new_pw });
     res.redirect('/admin');
 });
+
+// [V31] 게시판(회선정보) 데이터 조회 라우터
+app.get('/board_line', async (req, res) => {
+    if (!req.session.user) return res.redirect('/');
+    let sidebar_info = await Sidebar.findOne({key: 'sidebar'}).lean() || { name: '우리팀 복무관리', logo_url: null, emoji: null };
+    let lines = await LineInfo.find().lean(); // DB에서 회선정보 모두 가져오기
+    res.render('index', { page: 'board_line', user: req.session.user, sidebar_info, lines });
+});
+
+// [V31] 게시판(회선정보) 엑셀 업로드 처리 API
+app.post('/api/board_line/upload', async (req, res) => {
+    if (!req.session.user) return res.json({ success: false, error: 'Unauthorized' });
+    const { data } = req.body; // 프론트엔드에서 파싱해서 보낸 JSON 배열
+    try {
+        await LineInfo.deleteMany({}); // 기존 데이터 싹 지우기 (덮어쓰기)
+        
+        let insertData = data.map((row, idx) => {
+            let cleanRow = {};
+            for (let k in row) {
+                // 엑셀에서 빈 헤더(__EMPTY)로 파싱된 쓰레기값 제거
+                if (!k.startsWith('__EMPTY')) {
+                    cleanRow[k] = row[k];
+                }
+            }
+            return {
+                id: 'line_' + Date.now() + '_' + idx,
+                data: cleanRow
+            };
+        });
+
+        // 데이터가 전부 비어있는 행 제거
+        insertData = insertData.filter(item => {
+            return Object.values(item.data).some(v => String(v).trim() !== '');
+        });
+
+        if (insertData.length > 0) {
+            await LineInfo.insertMany(insertData);
+        }
+        res.json({ success: true });
+    } catch (e) {
+        console.error(e);
+        res.json({ success: false, error: e.message });
+    }
+});
+
+// [V31] 게시판(회선정보) 각 항목 수동 수정 처리
+app.post('/api/board_line/update', async (req, res) => {
+    if (!req.session.user) return res.redirect('/');
+    const { id, ...dataFields } = req.body; // 폼에서 넘어온 모든 인풋 데이터
+    await LineInfo.updateOne({ id: id }, { data: dataFields });
+    res.redirect('/board_line');
+});
+
 
 app.get('/admin/backup', async (req, res) => {
     if (!req.session.user || !req.session.user.is_admin) return res.status(403).send("권한이 없어.");

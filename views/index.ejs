@@ -9,6 +9,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/ko.js"></script>
+    <!-- [V31] 엑셀 처리를 위한 SheetJS 라이브러리 추가 -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 
     <script>
         const globalHolidays = [
@@ -97,55 +99,23 @@
         .fc-toolbar-title { font-weight: 800 !important; transition: color 0.2s; }
         .fc-toolbar-title:hover { color: #3b82f6 !important; }
 
-        /* [V30] Flatpickr 달력 헤더 (연도/월 선택) 투박함 개선 */
-        .flatpickr-months {
-            padding-top: 8px !important;
-            padding-bottom: 8px !important;
-        }
+        .flatpickr-months { padding-top: 8px !important; padding-bottom: 8px !important; }
         .flatpickr-current-month {
             font-family: 'NanumSquare', sans-serif !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            gap: 5px;
-            font-size: 1.15rem !important;
-            padding-top: 5px !important;
+            display: flex !important; align-items: center !important; justify-content: center !important;
+            gap: 5px; font-size: 1.15rem !important; padding-top: 5px !important;
         }
-        /* 월 선택 드롭다운 디자인 다듬기 */
         .flatpickr-current-month .flatpickr-monthDropdown-months {
-            font-weight: 800 !important;
-            color: #1f2937 !important;
-            background-color: transparent !important;
-            border-radius: 8px !important;
-            padding: 4px 8px !important;
-            outline: none !important;
-            cursor: pointer !important;
-            appearance: none;
-            -webkit-appearance: none;
+            font-weight: 800 !important; color: #1f2937 !important; background-color: transparent !important;
+            border-radius: 8px !important; padding: 4px 8px !important; outline: none !important; cursor: pointer !important;
+            appearance: none; -webkit-appearance: none;
         }
-        .flatpickr-current-month .flatpickr-monthDropdown-months:hover {
-            background-color: #f3f4f6 !important;
-        }
-        /* 연도 입력칸 디자인 다듬기 (화살표 제거) */
-        .flatpickr-current-month .numInputWrapper {
-            width: 75px !important;
-            border-radius: 8px !important;
-        }
-        .flatpickr-current-month .numInputWrapper:hover {
-            background-color: #f3f4f6 !important;
-        }
-        .flatpickr-current-month input.cur-year {
-            font-weight: 800 !important;
-            color: #1f2937 !important;
-            padding: 4px !important;
-            cursor: text !important;
-        }
-        .flatpickr-current-month .numInputWrapper span.arrowUp,
-        .flatpickr-current-month .numInputWrapper span.arrowDown {
-            display: none !important; /* 거슬리는 화살표 숨김 */
-        }
-        
-        /* 메인 페이지 전용 텍스트 트리거 디자인 */
+        .flatpickr-current-month .flatpickr-monthDropdown-months:hover { background-color: #f3f4f6 !important; }
+        .flatpickr-current-month .numInputWrapper { width: 75px !important; border-radius: 8px !important; }
+        .flatpickr-current-month .numInputWrapper:hover { background-color: #f3f4f6 !important; }
+        .flatpickr-current-month input.cur-year { font-weight: 800 !important; color: #1f2937 !important; padding: 4px !important; cursor: text !important; }
+        .flatpickr-current-month .numInputWrapper span.arrowUp, .flatpickr-current-month .numInputWrapper span.arrowDown { display: none !important; }
+
         .main-date-picker {
             background: transparent !important;
             border: none !important;
@@ -163,6 +133,13 @@
             background: transparent !important; outline: none !important; box-shadow: none !important;
         }
         .main-date-picker::selection { background: transparent; }
+
+        /* [V31] 테이블 스크롤 및 고정 스타일 */
+        .board-table-wrapper {
+            max-height: calc(100vh - 160px);
+            overflow-y: auto;
+            overflow-x: auto;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -230,6 +207,11 @@
                     <a href="/calendar" class="block py-2.5 px-4 rounded transition font-bold <% if (page === 'calendar') { %>bg-gray-100 font-extrabold text-black border-2 border-gray-900 shadow-sm<% } else { %>hover:bg-gray-50 text-gray-800<% } %>">캘린더</a>
                     <a href="/leave_status" class="block py-2.5 px-4 rounded transition font-bold <% if (page === 'leave') { %>bg-gray-100 font-extrabold text-black border-2 border-gray-900 shadow-sm<% } else { %>hover:bg-gray-50 text-gray-800<% } %>">연차 잔여 현황</a>
                     
+                    <!-- [V31] 게시판(BOARD) 섹션 분리 및 회선정보 메뉴 추가 -->
+                    <hr class="my-4 border-gray-200">
+                    <p class="px-4 text-xs font-extrabold text-gray-400 mb-2 tracking-wider">BOARD</p>
+                    <a href="/board_line" class="block py-2.5 px-4 rounded transition font-bold <% if (page === 'board_line') { %>bg-gray-100 font-extrabold text-black border-2 border-gray-900 shadow-sm<% } else { %>hover:bg-gray-50 text-gray-800<% } %>">회선정보</a>
+
                     <% if (user && user.is_admin) { %>
                     <hr class="my-4 border-gray-200">
                     <p class="px-4 text-xs font-extrabold text-gray-400 mb-2 tracking-wider">ADMINISTRATION</p>
@@ -263,7 +245,7 @@
             </div>
         </div>
 
-        <div class="flex-1 overflow-y-auto relative">
+        <div class="flex-1 overflow-y-auto relative bg-gray-50">
             <% if (page === 'main') { %>
             <header class="bg-white p-4 border-b flex justify-center items-center space-x-4">
                 <a href="/main?date=<%= prev_date %>" class="text-gray-400 hover:text-black transition" title="이전 날">
@@ -402,7 +384,6 @@
                     <div id="calendar"></div>
                 </div>
 
-                <!-- [V30] 커스텀 미니 달력(월 선택기) 둥글고 세련되게 디자인 개선 -->
                 <div id="custom-month-picker" class="hidden fixed bg-white shadow-[0_10px_40px_rgba(0,0,0,0.1)] rounded-3xl border border-gray-100 p-5 z-[150] w-[260px] transform transition-all">
                     <div class="flex justify-between items-center mb-4 pb-3 border-b border-gray-100/50">
                         <button type="button" onclick="changePickerYear(-1)" class="text-gray-400 hover:text-gray-800 hover:bg-gray-50 w-8 h-8 rounded-full flex items-center justify-center transition duration-200">
@@ -587,6 +568,165 @@
                 </script>
             </main>
 
+            <!-- [V31] 게시판 - 회선정보 -->
+            <% } else if (page === 'board_line') { %>
+            <header class="bg-white p-4 border-b flex justify-between items-center shadow-sm">
+                <span class="text-gray-800 font-bold text-xl ml-4">회선정보 게시판</span>
+                <div class="flex space-x-2 mr-4">
+                    <input type="file" id="excel-upload" accept=".xlsx, .xls" class="hidden" onchange="handleExcelUpload(event)">
+                    <button onclick="document.getElementById('excel-upload').click()" class="bg-blue-600 text-white px-5 py-2 rounded-lg font-bold hover:bg-blue-700 transition shadow-sm text-sm">
+                        엑셀 데이터 반영하기
+                    </button>
+                </div>
+            </header>
+            
+            <main class="p-6 h-[calc(100vh-73px)] overflow-y-auto">
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 w-full flex flex-col h-full overflow-hidden">
+                    <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                        <p class="text-sm font-bold text-gray-600">※ 엑셀 파일(회선정보 시트)을 업로드하면 아래 표가 자동으로 업데이트됩니다.</p>
+                        <p class="text-xs text-gray-400">총 데이터: <%= lines ? lines.length : 0 %>건</p>
+                    </div>
+                    
+                    <div class="flex-1 board-table-wrapper">
+                        <table class="w-full text-center border-collapse text-sm whitespace-nowrap">
+                            <thead class="sticky top-0 bg-gray-100 z-10 shadow-sm">
+                                <tr>
+                                    <th class="p-3 font-bold text-gray-800 border-b border-gray-200 sticky left-0 bg-gray-100 z-20 w-16">수정</th>
+                                    <% 
+                                    let headers = [];
+                                    if (lines && lines.length > 0) { 
+                                        headers = Object.keys(lines[0].data);
+                                    } 
+                                    %>
+                                    <% headers.forEach(h => { %>
+                                        <th class="p-3 font-bold text-gray-800 border-b border-gray-200"><%= h %></th>
+                                    <% }) %>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% if (lines && lines.length > 0) { %>
+                                    <% lines.forEach((line) => { %>
+                                    <tr class="border-b border-gray-50 hover:bg-gray-50 transition">
+                                        <td class="p-2 border-r border-gray-50 sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                                            <button onclick="openLineModal('<%= line.id %>')" class="bg-gray-100 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-200 font-bold text-xs transition">수정</button>
+                                        </td>
+                                        <% headers.forEach(h => { %>
+                                            <td class="p-3 text-gray-600 border-r border-gray-50 truncate max-w-[200px]" title="<%= line.data[h] %>"><%= line.data[h] || '-' %></td>
+                                        <% }) %>
+                                    </tr>
+                                    <% }) %>
+                                <% } else { %>
+                                    <tr>
+                                        <td colspan="100%" class="p-12 text-gray-400 font-bold text-center bg-gray-50">
+                                            <div class="flex flex-col items-center justify-center space-y-3">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                </svg>
+                                                <span>등록된 데이터가 없습니다. 우측 상단의 [엑셀 데이터 반영하기] 버튼을 눌러주세요.</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <% } %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+
+            <script>
+                // 서버에서 내려받은 데이터를 JS 변수로 할당 (수정 모달에서 사용)
+                const lineData = <%- JSON.stringify(typeof lines !== 'undefined' ? lines : []) %>;
+                
+                function openLineModal(id) {
+                    let line = lineData.find(l => l.id === id);
+                    if (!line) return;
+                    
+                    let html = '';
+                    html += '<input type="hidden" name="id" value="'+id+'">';
+                    // 각 항목별 인풋박스 생성
+                    for (let key in line.data) {
+                        html += `
+                        <div class="mb-3">
+                            <label class="block text-xs font-bold text-gray-700 mb-1 truncate" title="${key}">${key}</label>
+                            <input type="text" name="${key}" value="${line.data[key]}" class="w-full border border-gray-300 p-2 rounded-lg text-sm bg-gray-50 focus:bg-white focus:border-blue-500 outline-none transition">
+                        </div>`;
+                    }
+                    document.getElementById('line-modal-form-content').innerHTML = html;
+                    document.getElementById('line-modal').classList.remove('hidden');
+                }
+
+                function handleExcelUpload(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            const data = new Uint8Array(e.target.result);
+                            const workbook = XLSX.read(data, {type: 'array'});
+                            const sheetName = "회선정보";
+                            if (!workbook.SheetNames.includes(sheetName)) {
+                                alert("엑셀 파일 내에 '회선정보'라는 이름의 시트가 없습니다.");
+                                document.getElementById('excel-upload').value = '';
+                                return;
+                            }
+                            const worksheet = workbook.Sheets[sheetName];
+                            // range: 3 (4번째 줄부터 헤더로 인식), defval: "" (빈 셀은 빈 문자열로 처리)
+                            const json = XLSX.utils.sheet_to_json(worksheet, { range: 3, defval: "" }); 
+                            
+                            // 서버 API로 전송
+                            fetch('/api/board_line/upload', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ data: json })
+                            }).then(res => res.json()).then(data => {
+                                if(data.success) {
+                                    alert('회선정보 엑셀 데이터가 성공적으로 반영되었습니다.');
+                                    location.reload();
+                                } else {
+                                    alert('업로드 실패: ' + data.error);
+                                }
+                            }).catch(err => {
+                                alert('업로드 중 오류가 발생했습니다.');
+                                console.error(err);
+                            });
+                        } catch (error) {
+                            alert('엑셀 파일을 읽는 중 에러가 발생했습니다.');
+                            console.error(error);
+                        } finally {
+                            document.getElementById('excel-upload').value = ''; // 초기화
+                        }
+                    };
+                    reader.readAsArrayBuffer(file);
+                }
+            </script>
+
+            <!-- [V31] 회선정보 수동 수정 모달 -->
+            <div id="line-modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[200]">
+                <div class="bg-white p-6 rounded-2xl shadow-2xl w-[800px] max-h-[90vh] flex flex-col">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold text-gray-900">회선정보 항목 수정</h3>
+                        <button type="button" onclick="document.getElementById('line-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-900 font-bold text-xl transition">✕</button>
+                    </div>
+                    <form action="/api/board_line/update" method="post" class="flex-1 overflow-y-auto pr-3 custom-scrollbar">
+                        <div id="line-modal-form-content" class="grid grid-cols-2 gap-4">
+                            <!-- JS에서 엑셀 헤더 기반으로 동적 생성됨 -->
+                        </div>
+                        <div class="flex justify-end space-x-2 pt-4 border-t border-gray-100 mt-5">
+                            <button type="button" onclick="document.getElementById('line-modal').classList.add('hidden')" class="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition">취소</button>
+                            <button type="submit" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition shadow-sm">저장하기</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <style>
+                /* 스크롤바 디자인 */
+                .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+            </style>
             <% } else if (page === 'leave') { %>
             <header class="bg-white p-4 border-b flex justify-center items-center">
                 <span class="text-gray-800 font-bold text-xl">연차 잔여 현황</span>
