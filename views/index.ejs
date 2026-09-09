@@ -85,8 +85,17 @@
         body { font-family: 'NanumSquare', sans-serif !important; }
         input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         input[type="number"] { -moz-appearance: textfield; }
-        td.fc-day-sun a.fc-daygrid-day-number, td.is-holiday a.fc-daygrid-day-number { color: #ef4444 !important; font-weight: 900 !important; }
-        td.fc-day-sat a.fc-daygrid-day-number { color: #3b82f6 !important; font-weight: 900 !important; }
+        
+        /* FullCalendar 기본 공휴일/주말 스타일 (현재 달 기준) */
+        td.fc-day-sun:not(.fc-day-other) a.fc-daygrid-day-number, 
+        td.is-holiday:not(.fc-day-other) a.fc-daygrid-day-number { color: #ef4444 !important; font-weight: 900 !important; }
+        td.fc-day-sat:not(.fc-day-other) a.fc-daygrid-day-number { color: #3b82f6 !important; font-weight: 900 !important; }
+
+        /* [V29] FullCalendar의 이번 달이 아닌 주말/공휴일을 흐리게 처리 */
+        td.fc-day-other.fc-day-sun a.fc-daygrid-day-number,
+        td.fc-day-other.is-holiday a.fc-daygrid-day-number { color: rgba(239, 68, 68, 0.4) !important; font-weight: normal !important; }
+        td.fc-day-other.fc-day-sat a.fc-daygrid-day-number { color: rgba(59, 130, 246, 0.4) !important; font-weight: normal !important; }
+
         .fc-toolbar-title { font-weight: 800 !important; transition: color 0.2s; }
         .fc-toolbar-title:hover { color: #3b82f6 !important; }
 
@@ -138,7 +147,6 @@
                 <button type="submit" class="w-full bg-blue-600 text-white p-2.5 rounded-lg hover:bg-blue-700 font-medium transition">가입하기</button>
             </form>
 
-            <!-- [V28] onsubmit에서 confirm 확인 팝업 제거됨 -->
             <form id="form-reset" action="/reset_pw_request" method="post" class="space-y-4 hidden">
                 <div><input type="text" name="name" placeholder="이름" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50"></div>
                 <div><input type="text" name="emp_id" placeholder="사번" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50"></div>
@@ -282,12 +290,15 @@
                     onDayCreate: function(dObj, dStr, fp, dayElem) {
                         let d = dayElem.dateObj;
                         let dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+                        // [V29] 이번 달이 아닌 날짜인지 확인
+                        let isOutMonth = dayElem.classList.contains('prevMonthDay') || dayElem.classList.contains('nextMonthDay');
+                        
                         if (d.getDay() === 0 || globalHolidays.includes(dateStr)) {
-                            dayElem.style.color = '#ef4444';
-                            dayElem.style.fontWeight = 'bold';
+                            dayElem.style.color = isOutMonth ? 'rgba(239, 68, 68, 0.4)' : '#ef4444';
+                            dayElem.style.fontWeight = isOutMonth ? 'normal' : 'bold';
                         } else if (d.getDay() === 6) {
-                            dayElem.style.color = '#3b82f6';
-                            dayElem.style.fontWeight = 'bold';
+                            dayElem.style.color = isOutMonth ? 'rgba(59, 130, 246, 0.4)' : '#3b82f6';
+                            dayElem.style.fontWeight = isOutMonth ? 'normal' : 'bold';
                         }
                     }
                 };
@@ -424,12 +435,15 @@
                             onDayCreate: function(dObj, dStr, fp, dayElem) {
                                 let d = dayElem.dateObj;
                                 let dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+                                // [V29] 팝업 미니달력에서도 이번 달이 아닌 날짜 확인
+                                let isOutMonth = dayElem.classList.contains('prevMonthDay') || dayElem.classList.contains('nextMonthDay');
+                                
                                 if (d.getDay() === 0 || globalHolidays.includes(dateStr)) {
-                                    dayElem.style.color = '#ef4444';
-                                    dayElem.style.fontWeight = 'bold';
+                                    dayElem.style.color = isOutMonth ? 'rgba(239, 68, 68, 0.4)' : '#ef4444';
+                                    dayElem.style.fontWeight = isOutMonth ? 'normal' : 'bold';
                                 } else if (d.getDay() === 6) {
-                                    dayElem.style.color = '#3b82f6';
-                                    dayElem.style.fontWeight = 'bold';
+                                    dayElem.style.color = isOutMonth ? 'rgba(59, 130, 246, 0.4)' : '#3b82f6';
+                                    dayElem.style.fontWeight = isOutMonth ? 'normal' : 'bold';
                                 }
                             }
                         };
@@ -653,7 +667,6 @@
                             <tr class="border-b border-gray-50 hover:bg-gray-50 transition">
                                 <td class="p-4 font-medium"><%= eid %></td>
                                 <td class="p-4 font-bold"><%= u.name %></td>
-                                <!-- [V28] 관리자 페이지 연락처 직접 수정 기능 -->
                                 <td class="p-4">
                                     <form action="/admin/update_phone" method="post" class="flex items-center space-x-2">
                                         <input type="hidden" name="emp_id" value="<%= eid %>">
