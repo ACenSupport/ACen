@@ -22,15 +22,16 @@ mongoose.connect(MONGO_URI)
     .then(() => console.log('MongoDB 연결 완료'))
     .catch(err => console.error('MongoDB 연결 에러:', err));
 
-// [MongoDB 스키마] 이모지 필드 추가
+// [MongoDB 스키마] 연락처(phone) 추가
 const UserSchema = new mongoose.Schema({
     emp_id: { type: String, required: true, unique: true },
     pw: { type: String, required: true },
     name: { type: String, required: true },
+    phone: { type: String, default: '' }, // 연락처 추가
     is_admin: { type: Boolean, default: false },
     leave: { type: Number, default: 15.0 },
     profile_img: { type: String, default: null },
-    emoji: { type: String, default: null } // 이모지 추가
+    emoji: { type: String, default: null }
 });
 const User = mongoose.model('User', UserSchema);
 
@@ -47,7 +48,7 @@ const SidebarSchema = new mongoose.Schema({
     key: { type: String, default: 'sidebar' },
     name: { type: String, default: '우리팀 복무관리' },
     logo_url: { type: String, default: null },
-    emoji: { type: String, default: null } // 이모지 추가
+    emoji: { type: String, default: null }
 });
 const Sidebar = mongoose.model('Sidebar', SidebarSchema);
 
@@ -55,10 +56,10 @@ async function initDB() {
     try {
         const admin = await User.findOne({ emp_id: '60514' });
         if (!admin) {
-            await User.create({ emp_id: '60514', pw: '1111', name: '이재성', is_admin: true });
-            await User.create({ emp_id: '1002', pw: '1111', name: '강지혜', is_admin: false });
-            await User.create({ emp_id: '1003', pw: '1111', name: '최현진', is_admin: false });
-            await User.create({ emp_id: '1004', pw: '1111', name: '서우주', is_admin: false });
+            await User.create({ emp_id: '60514', pw: '1111', name: '이재성', phone: '010-1234-5678', is_admin: true });
+            await User.create({ emp_id: '1002', pw: '1111', name: '강지혜', phone: '010-1111-2222', is_admin: false });
+            await User.create({ emp_id: '1003', pw: '1111', name: '최현진', phone: '010-3333-4444', is_admin: false });
+            await User.create({ emp_id: '1004', pw: '1111', name: '서우주', phone: '010-5555-6666', is_admin: false });
         }
         const sidebar = await Sidebar.findOne({ key: 'sidebar' });
         if (!sidebar) {
@@ -106,6 +107,7 @@ app.post('/login', async (req, res) => {
         req.session.user = {
             emp_id: user.emp_id,
             name: user.name,
+            phone: user.phone || '',
             is_admin: user.is_admin,
             profile_img: user.profile_img,
             emoji: user.emoji
@@ -123,27 +125,28 @@ app.post('/api/check_id', async (req, res) => {
 });
 
 app.post('/signup', async (req, res) => {
-    const { emp_id, emp_pw, name } = req.body;
+    const { emp_id, emp_pw, name, phone } = req.body;
     if (await User.exists({ emp_id: emp_id })) {
         return res.send("<script>alert('이미 존재하는 사번입니다.'); history.back();</script>");
     }
-    await User.create({ emp_id, pw: emp_pw, name, is_admin: false, leave: 15.0 });
+    await User.create({ emp_id, pw: emp_pw, name, phone, is_admin: false, leave: 15.0 });
     res.send("<script>alert('회원가입이 완료되었습니다.'); window.location.href='/';</script>");
 });
 
 app.post('/admin/create_user', async (req, res) => {
     if (!req.session.user || !req.session.user.is_admin) return res.status(403).send("권한이 없어.");
-    const { emp_id, emp_pw, name } = req.body;
+    const { emp_id, emp_pw, name, phone } = req.body;
     if (await User.exists({ emp_id: emp_id })) {
         return res.send("<script>alert('이미 존재하는 사번입니다.'); history.back();</script>");
     }
-    await User.create({ emp_id, pw: emp_pw, name, is_admin: false, leave: 15.0 });
+    await User.create({ emp_id, pw: emp_pw, name, phone, is_admin: false, leave: 15.0 });
     res.redirect('/admin');
 });
 
 app.post('/reset_pw_request', async (req, res) => {
-    const { emp_id, name } = req.body;
-    const user = await User.findOne({ emp_id, name });
+    const { emp_id, name, phone } = req.body;
+    // 연락처(phone)까지 일치해야 비밀번호 초기화 진행
+    const user = await User.findOne({ emp_id, name, phone });
     if (user) {
         user.pw = 'new1234@';
         await user.save();
@@ -178,7 +181,7 @@ app.post('/update_sidebar', async (req, res) => {
 
 app.post('/update_profile', async (req, res) => {
     if (!req.session.user) return res.redirect('/');
-    const { current_pw, new_pw, confirm_pw, reset_profile_img, profile_img_base64, profile_emoji } = req.body;
+    const { current_pw, new_pw, confirm_pw, reset_profile_img, profile_img_base64, profile_emoji, phone } = req.body;
     
     let user = await User.findOne({ emp_id: req.session.user.emp_id });
     if (!user) return res.redirect('/');
@@ -187,6 +190,11 @@ app.post('/update_profile', async (req, res) => {
         if (current_pw !== user.pw) return res.send("<script>alert('기존 비밀번호가 일치하지 않습니다.'); history.back();</script>");
         if (new_pw !== confirm_pw) return res.send("<script>alert('변경 비밀번호를 확인해 주세요.'); history.back();</script>");
         if (new_pw) user.pw = new_pw;
+    }
+
+    if (phone) {
+        user.phone = phone;
+        req.session.user.phone = phone;
     }
 
     if (reset_profile_img === 'yes') {
@@ -517,7 +525,7 @@ app.get('/admin/backup', async (req, res) => {
     let records = await Record.find({}, '-_id -__v').lean();
     let sidebar = await Sidebar.findOne({key: 'sidebar'}, '-_id -__v').lean() || { name: '우리팀 복무관리', logo_url: null, emoji: null };
     let backupDb = { users: {}, records, sidebar_info: sidebar };
-    users.forEach(u => backupDb.users[u.emp_id] = { pw: u.pw, name: u.name, is_admin: u.is_admin, leave: u.leave, profile_img: u.profile_img, emoji: u.emoji });
+    users.forEach(u => backupDb.users[u.emp_id] = { pw: u.pw, name: u.name, phone: u.phone, is_admin: u.is_admin, leave: u.leave, profile_img: u.profile_img, emoji: u.emoji });
     res.setHeader('Content-disposition', 'attachment; filename=work_manage_backup.json');
     res.setHeader('Content-type', 'application/json');
     res.send(JSON.stringify(backupDb, null, 2));
@@ -533,7 +541,7 @@ app.post('/admin/restore', async (req, res) => {
             await Sidebar.deleteMany({});
             for (let eid in backupData.users) {
                 let u = backupData.users[eid];
-                await User.create({ emp_id: eid, pw: u.pw, name: u.name, is_admin: u.is_admin, leave: u.leave, profile_img: u.profile_img, emoji: u.emoji });
+                await User.create({ emp_id: eid, pw: u.pw, name: u.name, phone: u.phone || '', is_admin: u.is_admin, leave: u.leave, profile_img: u.profile_img, emoji: u.emoji });
             }
             if (backupData.records.length > 0) await Record.insertMany(backupData.records);
             let sb = backupData.sidebar_info || { name: '우리팀 복무관리', logo_url: null, emoji: null };
