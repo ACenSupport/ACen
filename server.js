@@ -52,7 +52,7 @@ const SidebarSchema = new mongoose.Schema({
 });
 const Sidebar = mongoose.model('Sidebar', SidebarSchema);
 
-// [V31] 게시판 회선정보 스키마 추가
+// 게시판 회선정보 스키마
 const LineInfoSchema = new mongoose.Schema({
     id: { type: String, required: true, unique: true },
     data: { type: Object, required: true }
@@ -501,10 +501,9 @@ app.get('/leave_status', async (req, res) => {
     leave_data_list.sort(sortUsers);
     monthly_data_for_view.sort(sortUsers);
 
-    let team_members = users.map(u => u.name);
     res.render('index', { 
         page: 'leave', user: req.session.user, leave_data_list, 
-        team_members, sidebar_info, holidays, monthly_data_for_view
+        team_members: users.map(u => u.name), sidebar_info, holidays, monthly_data_for_view
     });
 });
 
@@ -534,27 +533,25 @@ app.post('/admin/action', async (req, res) => {
     res.redirect('/admin');
 });
 
-// [V32] 게시판(회선정보) 데이터 조회 라우터 (team_members 누락 수정)
+// 게시판(회선정보) 데이터 조회 라우터
 app.get('/board_line', async (req, res) => {
     if (!req.session.user) return res.redirect('/');
     let users = await User.find().lean();
     let team_members = users.map(u => u.name);
     let sidebar_info = await Sidebar.findOne({key: 'sidebar'}).lean() || { name: '우리팀 복무관리', logo_url: null, emoji: null };
-    let lines = await LineInfo.find().lean(); // DB에서 회선정보 모두 가져오기
+    let lines = await LineInfo.find().lean();
     res.render('index', { page: 'board_line', user: req.session.user, sidebar_info, lines, team_members, holidays });
 });
 
-// [V31] 게시판(회선정보) 엑셀 업로드 처리 API
+// 게시판 엑셀 업로드 처리 API
 app.post('/api/board_line/upload', async (req, res) => {
     if (!req.session.user) return res.json({ success: false, error: 'Unauthorized' });
-    const { data } = req.body; // 프론트엔드에서 파싱해서 보낸 JSON 배열
+    const { data } = req.body; 
     try {
-        await LineInfo.deleteMany({}); // 기존 데이터 싹 지우기 (덮어쓰기)
-        
+        await LineInfo.deleteMany({}); 
         let insertData = data.map((row, idx) => {
             let cleanRow = {};
             for (let k in row) {
-                // 엑셀에서 빈 헤더(__EMPTY)로 파싱된 쓰레기값 제거
                 if (!k.startsWith('__EMPTY')) {
                     cleanRow[k] = row[k];
                 }
@@ -565,7 +562,6 @@ app.post('/api/board_line/upload', async (req, res) => {
             };
         });
 
-        // 데이터가 전부 비어있는 행 제거
         insertData = insertData.filter(item => {
             return Object.values(item.data).some(v => String(v).trim() !== '');
         });
@@ -580,14 +576,18 @@ app.post('/api/board_line/upload', async (req, res) => {
     }
 });
 
-// [V31] 게시판(회선정보) 각 항목 수동 수정 처리
+// [V33] 게시판(회선정보) 인라인 수정 업데이트 API
 app.post('/api/board_line/update', async (req, res) => {
-    if (!req.session.user) return res.redirect('/');
-    const { id, ...dataFields } = req.body; // 폼에서 넘어온 모든 인풋 데이터
-    await LineInfo.updateOne({ id: id }, { data: dataFields });
-    res.redirect('/board_line');
+    if (!req.session.user) return res.json({ success: false, error: 'Unauthorized' });
+    try {
+        const { id, ...dataFields } = req.body;
+        await LineInfo.updateOne({ id: id }, { data: dataFields });
+        res.json({ success: true }); // JSON 응답으로 변경 (페이지 새로고침 방지)
+    } catch (e) {
+        console.error(e);
+        res.json({ success: false, error: e.message });
+    }
 });
-
 
 app.get('/admin/backup', async (req, res) => {
     if (!req.session.user || !req.session.user.is_admin) return res.status(403).send("권한이 없어.");
