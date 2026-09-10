@@ -52,13 +52,6 @@ const SidebarSchema = new mongoose.Schema({
 });
 const Sidebar = mongoose.model('Sidebar', SidebarSchema);
 
-// 게시판 회선정보 스키마
-const LineInfoSchema = new mongoose.Schema({
-    id: { type: String, required: true, unique: true },
-    data: { type: Object, required: true }
-});
-const LineInfo = mongoose.model('LineInfo', LineInfoSchema);
-
 async function initDB() {
     try {
         const admin = await User.findOne({ emp_id: '60514' });
@@ -501,9 +494,10 @@ app.get('/leave_status', async (req, res) => {
     leave_data_list.sort(sortUsers);
     monthly_data_for_view.sort(sortUsers);
 
+    let team_members = users.map(u => u.name);
     res.render('index', { 
         page: 'leave', user: req.session.user, leave_data_list, 
-        team_members: users.map(u => u.name), sidebar_info, holidays, monthly_data_for_view
+        team_members, sidebar_info, holidays, monthly_data_for_view
     });
 });
 
@@ -531,62 +525,6 @@ app.post('/admin/action', async (req, res) => {
     else if (action === 'delete') await User.deleteOne({ emp_id });
     else if (action === 'change_pw') await User.updateOne({ emp_id }, { pw: new_pw });
     res.redirect('/admin');
-});
-
-// 게시판(회선정보) 데이터 조회 라우터
-app.get('/board_line', async (req, res) => {
-    if (!req.session.user) return res.redirect('/');
-    let users = await User.find().lean();
-    let team_members = users.map(u => u.name);
-    let sidebar_info = await Sidebar.findOne({key: 'sidebar'}).lean() || { name: '우리팀 복무관리', logo_url: null, emoji: null };
-    let lines = await LineInfo.find().lean();
-    res.render('index', { page: 'board_line', user: req.session.user, sidebar_info, lines, team_members, holidays });
-});
-
-// 게시판 엑셀 업로드 처리 API
-app.post('/api/board_line/upload', async (req, res) => {
-    if (!req.session.user) return res.json({ success: false, error: 'Unauthorized' });
-    const { data } = req.body; 
-    try {
-        await LineInfo.deleteMany({}); 
-        let insertData = data.map((row, idx) => {
-            let cleanRow = {};
-            for (let k in row) {
-                if (!k.startsWith('__EMPTY')) {
-                    cleanRow[k] = row[k];
-                }
-            }
-            return {
-                id: 'line_' + Date.now() + '_' + idx,
-                data: cleanRow
-            };
-        });
-
-        insertData = insertData.filter(item => {
-            return Object.values(item.data).some(v => String(v).trim() !== '');
-        });
-
-        if (insertData.length > 0) {
-            await LineInfo.insertMany(insertData);
-        }
-        res.json({ success: true });
-    } catch (e) {
-        console.error(e);
-        res.json({ success: false, error: e.message });
-    }
-});
-
-// [V33] 게시판(회선정보) 인라인 수정 업데이트 API
-app.post('/api/board_line/update', async (req, res) => {
-    if (!req.session.user) return res.json({ success: false, error: 'Unauthorized' });
-    try {
-        const { id, ...dataFields } = req.body;
-        await LineInfo.updateOne({ id: id }, { data: dataFields });
-        res.json({ success: true }); // JSON 응답으로 변경 (페이지 새로고침 방지)
-    } catch (e) {
-        console.error(e);
-        res.json({ success: false, error: e.message });
-    }
 });
 
 app.get('/admin/backup', async (req, res) => {
