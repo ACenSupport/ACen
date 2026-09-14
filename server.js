@@ -436,6 +436,7 @@ app.get('/delete/:ids', async (req, res) => {
     res.redirect('/calendar' + (req.query.date ? '?date=' + req.query.date : ''));
 });
 
+// [V35] 연차 현황 페이지 - 월별 사용 날짜 툴팁용 데이터 생성 로직 추가
 app.get('/leave_status', async (req, res) => {
     if (!req.session.user) return res.redirect('/');
     let users = await User.find().lean();
@@ -444,10 +445,12 @@ app.get('/leave_status', async (req, res) => {
 
     let leave_data = {};
     let monthly_usage = {};
+    let monthly_dates = {}; // [V35] 월별 사용 날짜 배열 저장
     
     for (let u of users) {
         let eid = u.emp_id;
         monthly_usage[eid] = { 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0, 10:0, 11:0, 12:0 };
+        monthly_dates[eid] = { 1:[], 2:[], 3:[], 4:[], 5:[], 6:[], 7:[], 8:[], 9:[], 10:[], 11:[], 12:[] };
         leave_data[eid] = { eid, name: u.name, granted: u.leave, used: 0, remaining: u.leave };
     }
     
@@ -467,8 +470,15 @@ app.get('/leave_status', async (req, res) => {
                     let dateStr = current.getFullYear() + '-' + String(current.getMonth() + 1).padStart(2, '0') + '-' + String(current.getDate()).padStart(2, '0');
                     if (dayOfWeek !== 0 && dayOfWeek !== 6 && !holidays.includes(dateStr)) {
                         let m = current.getMonth() + 1;
-                        if (r.reason === '연차') monthly_usage[eid][m] += 1.0;
-                        else monthly_usage[eid][m] += 0.5;
+                        let dStr = (current.getMonth() + 1) + '/' + current.getDate();
+                        
+                        if (r.reason === '연차') {
+                            monthly_usage[eid][m] += 1.0;
+                            monthly_dates[eid][m].push(dStr + '(연차)');
+                        } else {
+                            monthly_usage[eid][m] += 0.5;
+                            monthly_dates[eid][m].push(dStr + (r.reason === '오전반차' ? '(오전)' : '(오후)'));
+                        }
                     }
                     current.setDate(current.getDate() + 1);
                 }
@@ -479,7 +489,11 @@ app.get('/leave_status', async (req, res) => {
     for (let eid in leave_data) leave_data[eid].remaining = leave_data[eid].granted - leave_data[eid].used;
     
     let leave_data_list = Object.values(leave_data);
-    let monthly_data_for_view = Object.keys(leave_data).map(eid => ({ name: leave_data[eid].name, usage: monthly_usage[eid] }));
+    let monthly_data_for_view = Object.keys(leave_data).map(eid => ({ 
+        name: leave_data[eid].name, 
+        usage: monthly_usage[eid],
+        dates: monthly_dates[eid] // [V35] 날짜 배열 추가
+    }));
 
     const fixedOrder = ['이재성', '강지혜', '최현진', '서우주'];
     function sortUsers(a, b) {
