@@ -56,7 +56,8 @@ const BookmarkSchema = new mongoose.Schema({
     id: { type: String, required: true, unique: true },
     category: { type: String, required: true },
     title: { type: String, required: true },
-    url: { type: String, required: true }
+    url: { type: String, required: true },
+    order: { type: Number, default: 0 }
 });
 const Bookmark = mongoose.model('Bookmark', BookmarkSchema);
 
@@ -73,10 +74,10 @@ async function initDB() {
         
         const bks = await Bookmark.countDocuments();
         if (bks === 0) {
-            await Bookmark.create({ id: 'bm_' + Date.now() + '_1', category: 'KTcs', title: 'EHR', url: 'https://ehr.ktcs.co.kr' });
-            await Bookmark.create({ id: 'bm_' + Date.now() + '_2', category: 'KTcs', title: '그룹웨어', url: 'https://gw.ktcs.co.kr' });
-            await Bookmark.create({ id: 'bm_' + Date.now() + '_3', category: 'KT', title: 'eCMS(B2B)', url: 'https://escms.kt-aicc.com' });
-            await Bookmark.create({ id: 'bm_' + Date.now() + '_4', category: 'KT', title: 'eCMS(B2G)', url: 'https://cms.goc.kt-aicc.com' });
+            await Bookmark.create({ id: 'bm_' + Date.now() + '_1', category: 'KTcs', title: 'EHR', url: 'https://ehr.ktcs.co.kr', order: 1 });
+            await Bookmark.create({ id: 'bm_' + Date.now() + '_2', category: 'KTcs', title: '그룹웨어', url: 'https://gw.ktcs.co.kr', order: 2 });
+            await Bookmark.create({ id: 'bm_' + Date.now() + '_3', category: 'KT', title: 'eCMS(B2B)', url: 'https://escms.kt-aicc.com', order: 3 });
+            await Bookmark.create({ id: 'bm_' + Date.now() + '_4', category: 'KT', title: 'eCMS(B2G)', url: 'https://cms.goc.kt-aicc.com', order: 4 });
         }
 
         const sidebar = await Sidebar.findOne({ key: 'sidebar' });
@@ -561,7 +562,10 @@ app.get('/bookmarks', async (req, res) => {
     let sidebar_info = await Sidebar.findOne({key: 'sidebar'}).lean() || { name: '우리팀 복무관리', logo_url: null, emoji: null };
     let bookmarks = await Bookmark.find().lean();
     bookmarks.sort((a,b) => {
-        if(a.category === b.category) return a.title.localeCompare(b.title);
+        if(a.category === b.category) {
+            if(a.order === b.order) return a.title.localeCompare(b.title);
+            return (a.order || 0) - (b.order || 0);
+        }
         return a.category.localeCompare(b.category);
     });
     res.render('index', { page: 'bookmarks', user: req.session.user, sidebar_info, bookmarks, holidays, team_members });
@@ -569,16 +573,16 @@ app.get('/bookmarks', async (req, res) => {
 
 app.post('/admin/bookmark/add', async (req, res) => {
     if (!req.session.user || !req.session.user.is_admin) return res.status(403).send("권한이 없어.");
-    const { category, title, url } = req.body;
+    const { category, title, url, order } = req.body;
     let id = 'bm_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-    await Bookmark.create({ id, category, title, url });
+    await Bookmark.create({ id, category, title, url, order: parseInt(order) || 0 });
     res.redirect('/bookmarks');
 });
 
 app.post('/admin/bookmark/update', async (req, res) => {
     if (!req.session.user || !req.session.user.is_admin) return res.status(403).send("권한이 없어.");
-    const { id, category, title, url } = req.body;
-    await Bookmark.updateOne({ id }, { category, title, url });
+    const { id, category, title, url, order } = req.body;
+    await Bookmark.updateOne({ id }, { category, title, url, order: parseInt(order) || 0 });
     res.redirect('/bookmarks');
 });
 

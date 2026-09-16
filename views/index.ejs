@@ -759,7 +759,7 @@
                                         
                                         <% if (user && user.is_admin) { %>
                                         <div class="absolute top-4 right-4 hidden group-hover:flex space-x-1.5" onclick="event.stopPropagation();">
-                                            <button onclick="openBmEditModal('<%= bm.id %>', '<%= bm.category.replace(/'/g, "\\'") %>', '<%= bm.title.replace(/'/g, "\\'") %>', '<%= bm.url.replace(/'/g, "\\'") %>')" class="p-2 bg-white rounded-lg text-gray-600 hover:bg-blue-100 hover:text-blue-600 transition shadow-sm border border-gray-200" title="수정">
+                                            <button onclick="openBmEditModal('<%= bm.id %>', '<%= bm.category.replace(/'/g, "\\'") %>', '<%= bm.title.replace(/'/g, "\\'") %>', '<%= bm.url.replace(/'/g, "\\'") %>', <%= bm.order || 0 %>)" class="p-2 bg-white rounded-lg text-gray-600 hover:bg-blue-100 hover:text-blue-600 transition shadow-sm border border-gray-200" title="수정">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                             </button>
                                             <button onclick="if(confirm('이 즐겨찾기를 삭제하시겠습니까?')) location.href='/admin/bookmark/delete/<%= bm.id %>'" class="p-2 bg-white rounded-lg text-gray-600 hover:bg-red-100 hover:text-red-600 transition shadow-sm border border-gray-200" title="삭제">
@@ -797,6 +797,10 @@
                             <label class="block text-sm font-bold text-gray-700 mb-1">URL 주소</label>
                             <input type="url" name="url" id="bm-url" placeholder="https://" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
                         </div>
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-1">정렬 순서</label>
+                            <input type="number" name="order" id="bm-order" placeholder="숫자가 작을수록 앞에 표시" value="0" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
+                        </div>
                         <div class="flex justify-end space-x-2 pt-4 border-t border-gray-100 mt-2">
                             <button type="button" onclick="document.getElementById('bm-modal').classList.add('hidden')" class="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition">취소</button>
                             <button type="submit" id="bm-submit-btn" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition">추가하기</button>
@@ -812,17 +816,19 @@
                     document.getElementById('bm-category').value = '';
                     document.getElementById('bm-title').value = '';
                     document.getElementById('bm-url').value = '';
+                    document.getElementById('bm-order').value = '0';
                     document.getElementById('bm-submit-btn').innerText = '추가하기';
                     document.getElementById('bm-submit-btn').className = 'px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition';
                     document.getElementById('bm-modal').classList.remove('hidden');
                 }
-                function openBmEditModal(id, category, title, url) {
+                function openBmEditModal(id, category, title, url, order) {
                     document.getElementById('bm-modal-title').innerText = '즐겨찾기 수정';
                     document.getElementById('bm-form').action = '/admin/bookmark/update';
                     document.getElementById('bm-id').value = id;
                     document.getElementById('bm-category').value = category;
                     document.getElementById('bm-title').value = title;
                     document.getElementById('bm-url').value = url;
+                    document.getElementById('bm-order').value = order;
                     document.getElementById('bm-submit-btn').innerText = '저장하기';
                     document.getElementById('bm-submit-btn').className = 'px-5 py-2.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-black transition';
                     document.getElementById('bm-modal').classList.remove('hidden');
