@@ -97,9 +97,6 @@
         .fc-toolbar-title { font-weight: 800 !important; transition: color 0.2s; }
         .fc-toolbar-title:hover { color: #3b82f6 !important; }
 
-        /* [V38] 캘린더 등록된 복무 칸에 호버 시 손가락 포인터로 변경 */
-        .fc-event { cursor: pointer !important; }
-
         .flatpickr-months { padding-top: 8px !important; padding-bottom: 8px !important; }
         .flatpickr-current-month {
             font-family: 'NanumSquare', sans-serif !important;
@@ -126,6 +123,9 @@
             background: transparent !important; outline: none !important; box-shadow: none !important;
         }
         .main-date-picker::selection { background: transparent; }
+    
+        /* [V38/V39] 캘린더 등록된 복무 칸에 호버 시 손가락 포인터로 변경 */
+        .fc-event { cursor: pointer !important; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -397,29 +397,64 @@
                         document.getElementById('btn-update').classList.add('hidden');
                         document.getElementById('btn-register').classList.remove('hidden');
                         
+                        let memberSelect = document.querySelector('select[name="member"]');
+                        if (memberSelect) {
+                            memberSelect.disabled = false;
+                            let tempOpt = document.getElementById('temp-grouped-opt');
+                            if(tempOpt) tempOpt.remove();
+                            let currentUserName = "<%= user.name %>";
+                            memberSelect.value = currentUserName;
+                        }
+                        
+                        let reasonSelect = document.querySelector('select[name="reason"]');
+                        if(reasonSelect) reasonSelect.disabled = false;
+                        
                         document.getElementById('modal-start-date')._flatpickr.setDate(dateStr);
                         document.getElementById('modal-end-date')._flatpickr.setDate(dateStr);
-                        
-                        let currentUserName = "<%= user.name %>";
-                        let memberSelect = document.querySelector('select[name="member"]');
-                        if (memberSelect) memberSelect.value = currentUserName;
                         
                         document.getElementById('modal').classList.remove('hidden');
                     }
 
                     function openEditModal(event, dateStr) {
                         document.getElementById('modal-record-ids').value = event.id;
-                        document.getElementById('modal-title').innerText = '복무 기록 수정';
-                        document.getElementById('btn-register').classList.add('hidden');
-                        document.getElementById('btn-delete').classList.remove('hidden');
-                        document.getElementById('btn-update').classList.remove('hidden');
                         
                         let props = event.extendedProps;
+                        let isGrouped = props.name.includes(',');
+                        
+                        document.getElementById('modal-title').innerText = isGrouped ? '그룹 복무 기록 (수정 불가)' : '복무 기록 수정';
+                        document.getElementById('btn-register').classList.add('hidden');
+                        document.getElementById('btn-delete').classList.remove('hidden');
+                        
+                        if(isGrouped) {
+                            document.getElementById('btn-update').classList.add('hidden');
+                        } else {
+                            document.getElementById('btn-update').classList.remove('hidden');
+                        }
+                        
                         let memberSelect = document.querySelector('select[name="member"]');
-                        if(memberSelect) memberSelect.value = props.name;
+                        if(memberSelect) {
+                            memberSelect.disabled = false;
+                            let tempOpt = document.getElementById('temp-grouped-opt');
+                            if(tempOpt) tempOpt.remove();
+
+                            if (isGrouped) {
+                                let opt = document.createElement('option');
+                                opt.value = props.name;
+                                opt.text = props.name;
+                                opt.id = 'temp-grouped-opt';
+                                memberSelect.appendChild(opt);
+                                memberSelect.value = props.name;
+                                memberSelect.disabled = true;
+                            } else {
+                                memberSelect.value = props.name;
+                            }
+                        }
                         
                         let reasonSelect = document.querySelector('select[name="reason"]');
-                        if(reasonSelect) reasonSelect.value = props.reason;
+                        if(reasonSelect) {
+                            reasonSelect.disabled = isGrouped;
+                            reasonSelect.value = props.reason;
+                        }
                         
                         document.getElementById('modal-start-date')._flatpickr.setDate(props.orig_start);
                         document.getElementById('modal-end-date')._flatpickr.setDate(props.orig_end);
@@ -495,7 +530,18 @@
                             eventClick: function(info) {
                                 let isAdmin = <%= user && user.is_admin ? 'true' : 'false' %>;
                                 let currentUserName = "<%= user.name %>";
+                                let isGrouped = info.event.extendedProps.name.includes(',');
                                 
+                                if (isGrouped) {
+                                    if (!isAdmin) {
+                                        alert('여러 명의 일정이 묶인 그룹 항목은 관리자만 삭제할 수 있습니다.
+개별 삭제가 필요하다면 관리자에게 문의하세요.');
+                                        return;
+                                    }
+                                    openEditModal(info.event, info.dateStr);
+                                    return;
+                                }
+
                                 if (!isAdmin && info.event.extendedProps.name !== currentUserName) {
                                     alert('타인의 복무는 수정/취소할 수 없습니다.');
                                     return;

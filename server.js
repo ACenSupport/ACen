@@ -363,19 +363,33 @@ app.get('/calendar', async (req, res) => {
         mergedRecords.push(current);
     }
 
-    let fc_records = mergedRecords.map(r => {
+    let finalGroups = {};
+    mergedRecords.forEach(r => {
+        let key = r.start_date + '_' + r.end_date + '_' + r.reason;
+        if (!finalGroups[key]) finalGroups[key] = [];
+        finalGroups[key].push(r);
+    });
+
+    let fc_records = [];
+    for (let k in finalGroups) {
+        let arr = finalGroups[k];
+        let ids = arr.map(a => a.id).join(',');
+        let names = arr.map(a => a.name).join(', ');
+        let r = arr[0];
+        
         let endDateObj = new Date(r.end_date);
         endDateObj.setDate(endDateObj.getDate() + 1);
         let endDateFcStr = endDateObj.getFullYear() + '-' + String(endDateObj.getMonth() + 1).padStart(2, '0') + '-' + String(endDateObj.getDate()).padStart(2, '0');
-        return {
-            id: String(r.id),
-            name: r.name,
+
+        fc_records.push({
+            id: ids,
+            name: names,
             reason: r.reason,
             start_date: r.start_date,
             end_date: r.end_date,
             end_date_fc: endDateFcStr
-        };
-    });
+        });
+    }
 
     let team_members = users.map(u => u.name);
     res.render('index', { 
