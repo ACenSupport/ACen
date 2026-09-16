@@ -52,6 +52,15 @@ const SidebarSchema = new mongoose.Schema({
 });
 const Sidebar = mongoose.model('Sidebar', SidebarSchema);
 
+const BookmarkSchema = new mongoose.Schema({
+    id: { type: String, required: true, unique: true },
+    category: { type: String, required: true },
+    title: { type: String, required: true },
+    url: { type: String, required: true }
+});
+const Bookmark = mongoose.model('Bookmark', BookmarkSchema);
+
+
 async function initDB() {
     try {
         const admin = await User.findOne({ emp_id: '60514' });
@@ -61,6 +70,15 @@ async function initDB() {
             await User.create({ emp_id: '1003', pw: '1111', name: '최현진', phone: '010-3333-4444', is_admin: false });
             await User.create({ emp_id: '1004', pw: '1111', name: '서우주', phone: '010-5555-6666', is_admin: false });
         }
+        
+        const bks = await Bookmark.countDocuments();
+        if (bks === 0) {
+            await Bookmark.create({ id: 'bm_' + Date.now() + '_1', category: 'KTcs', title: 'EHR', url: 'https://ehr.ktcs.co.kr' });
+            await Bookmark.create({ id: 'bm_' + Date.now() + '_2', category: 'KTcs', title: '그룹웨어', url: 'https://gw.ktcs.co.kr' });
+            await Bookmark.create({ id: 'bm_' + Date.now() + '_3', category: 'KT', title: 'eCMS(B2B)', url: 'https://escms.kt-aicc.com' });
+            await Bookmark.create({ id: 'bm_' + Date.now() + '_4', category: 'KT', title: 'eCMS(B2G)', url: 'https://cms.goc.kt-aicc.com' });
+        }
+
         const sidebar = await Sidebar.findOne({ key: 'sidebar' });
         if (!sidebar) {
             await Sidebar.create({ key: 'sidebar', name: '우리팀 복무관리' });
@@ -535,6 +553,39 @@ app.post('/update_leave', async (req, res) => {
     res.redirect('/leave_status');
 });
 
+
+app.get('/bookmarks', async (req, res) => {
+    if (!req.session.user) return res.redirect('/');
+    let sidebar_info = await Sidebar.findOne({key: 'sidebar'}).lean() || { name: '우리팀 복무관리', logo_url: null, emoji: null };
+    let bookmarks = await Bookmark.find().lean();
+    bookmarks.sort((a,b) => {
+        if(a.category === b.category) return a.title.localeCompare(b.title);
+        return a.category.localeCompare(b.category);
+    });
+    res.render('index', { page: 'bookmarks', user: req.session.user, sidebar_info, bookmarks, holidays });
+});
+
+app.post('/admin/bookmark/add', async (req, res) => {
+    if (!req.session.user || !req.session.user.is_admin) return res.status(403).send("권한이 없어.");
+    const { category, title, url } = req.body;
+    let id = 'bm_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+    await Bookmark.create({ id, category, title, url });
+    res.redirect('/bookmarks');
+});
+
+app.post('/admin/bookmark/update', async (req, res) => {
+    if (!req.session.user || !req.session.user.is_admin) return res.status(403).send("권한이 없어.");
+    const { id, category, title, url } = req.body;
+    await Bookmark.updateOne({ id }, { category, title, url });
+    res.redirect('/bookmarks');
+});
+
+app.get('/admin/bookmark/delete/:id', async (req, res) => {
+    if (!req.session.user || !req.session.user.is_admin) return res.status(403).send("권한이 없어.");
+    await Bookmark.deleteOne({ id: req.params.id });
+    res.redirect('/bookmarks');
+});
+
 app.get('/admin', async (req, res) => {
     if (!req.session.user || !req.session.user.is_admin) return res.send("<script>alert('관리자만 접근 가능합니다.'); history.back();</script>");
     let users = await User.find().lean();
@@ -560,7 +611,8 @@ app.get('/admin/backup', async (req, res) => {
     let users = await User.find({}, '-_id -__v').lean();
     let records = await Record.find({}, '-_id -__v').lean();
     let sidebar = await Sidebar.findOne({key: 'sidebar'}, '-_id -__v').lean() || { name: '우리팀 복무관리', logo_url: null, emoji: null };
-    let backupDb = { users: {}, records, sidebar_info: sidebar };
+    let bookmarks = await Bookmark.find({}, '-_id -__v').lean();
+    let backupDb = { users: {}, records, sidebar_info: sidebar, bookmarks };
     users.forEach(u => backupDb.users[u.emp_id] = { pw: u.pw, name: u.name, phone: u.phone, is_admin: u.is_admin, leave: u.leave, profile_img: u.profile_img, emoji: u.emoji });
     res.setHeader('Content-disposition', 'attachment; filename=work_manage_backup.json');
     res.setHeader('Content-type', 'application/json');
@@ -582,6 +634,11 @@ app.post('/admin/restore', async (req, res) => {
             if (backupData.records.length > 0) await Record.insertMany(backupData.records);
             let sb = backupData.sidebar_info || { name: '우리팀 복무관리', logo_url: null, emoji: null };
             await Sidebar.create({ key: 'sidebar', name: sb.name, logo_url: sb.logo_url, emoji: sb.emoji });
+            await Bookmark.deleteMany({});
+            if (backupData.bookmarks && backupData.bookmarks.length > 0) {
+                await Bookmark.insertMany(backupData.bookmarks);
+            }
+
             return res.send("<script>alert('데이터가 몽고DB로 성공적으로 복구되었습니다.'); window.location.href='/admin';</script>");
         } else return res.send("<script>alert('유효하지 않은 백업 파일입니다.'); history.back();</script>");
     } catch (e) {

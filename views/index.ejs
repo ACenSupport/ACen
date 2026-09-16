@@ -191,6 +191,8 @@
                 <nav class="mt-6 px-4 space-y-2">
                     <a href="/main" class="block py-2.5 px-4 rounded transition font-bold <% if (page === 'main') { %>bg-gray-100 font-extrabold text-black border-2 border-gray-900 shadow-sm<% } else { %>hover:bg-gray-50 text-gray-800<% } %>">복무 현황</a>
                     <a href="/calendar" class="block py-2.5 px-4 rounded transition font-bold <% if (page === 'calendar') { %>bg-gray-100 font-extrabold text-black border-2 border-gray-900 shadow-sm<% } else { %>hover:bg-gray-50 text-gray-800<% } %>">캘린더</a>
+                    
+                    <a href="/bookmarks" class="block py-2.5 px-4 rounded transition font-bold <% if (page === 'bookmarks') { %>bg-gray-100 font-extrabold text-black border-2 border-gray-900 shadow-sm<% } else { %>hover:bg-gray-50 text-gray-800<% } %>">즐겨찾기</a>
                     <a href="/leave_status" class="block py-2.5 px-4 rounded transition font-bold <% if (page === 'leave') { %>bg-gray-100 font-extrabold text-black border-2 border-gray-900 shadow-sm<% } else { %>hover:bg-gray-50 text-gray-800<% } %>">연차 잔여 현황</a>
 
                     <% if (user && user.is_admin) { %>
@@ -702,6 +704,131 @@
                     </div>
                 </div>
             </main>
+
+            
+            <% } else if (page === 'bookmarks') { %>
+            <header class="bg-white p-4 border-b flex justify-between items-center shadow-sm">
+                <span class="text-gray-800 font-bold text-xl ml-4">즐겨찾기</span>
+                <% if (user && user.is_admin) { %>
+                <div class="mr-4">
+                    <button onclick="openBmAddModal()" class="bg-blue-600 text-white px-5 py-2 rounded-lg font-bold hover:bg-blue-700 transition shadow-sm text-sm">
+                        + 즐겨찾기 추가
+                    </button>
+                </div>
+                <% } %>
+            </header>
+
+            <main class="p-8 max-w-6xl mx-auto h-[calc(100vh-73px)] overflow-y-auto custom-scrollbar">
+                <% 
+                    let groupedBms = {};
+                    if(typeof bookmarks !== 'undefined') {
+                        bookmarks.forEach(bm => {
+                            if(!groupedBms[bm.category]) groupedBms[bm.category] = [];
+                            groupedBms[bm.category].push(bm);
+                        });
+                    }
+                    const categories = Object.keys(groupedBms).sort();
+                %>
+                
+                <% if (categories.length === 0) { %>
+                    <div class="p-12 text-gray-400 font-bold text-center bg-white rounded-2xl shadow-sm border border-gray-100 mt-8 flex flex-col items-center justify-center space-y-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                        </svg>
+                        <span>등록된 즐겨찾기가 없습니다.</span>
+                    </div>
+                <% } else { %>
+                    <% categories.forEach(cat => { %>
+                        <div class="mb-12 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                            <div class="flex items-center mb-6 border-b border-gray-100 pb-3">
+                                <span class="text-2xl font-extrabold text-gray-900 tracking-tight"><%= cat %></span>
+                                <span class="ml-3 px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-xs font-bold"><%= groupedBms[cat].length %></span>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                                <% groupedBms[cat].forEach(bm => { %>
+                                    <div class="bg-gray-50 p-5 rounded-2xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition relative group flex flex-col h-32 cursor-pointer" onclick="window.open('<%= bm.url %>', '_blank')">
+                                        <div class="flex flex-col flex-1 h-full">
+                                            <div class="flex items-center space-x-2 mb-2 pr-6">
+                                                <div class="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center text-blue-600 font-bold shrink-0 shadow-sm">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                                                </div>
+                                                <h3 class="font-bold text-[1.05rem] text-gray-800 truncate"><%= bm.title %></h3>
+                                            </div>
+                                            <p class="text-xs text-gray-400 truncate mt-auto"><%= bm.url %></p>
+                                        </div>
+                                        
+                                        <% if (user && user.is_admin) { %>
+                                        <div class="absolute top-4 right-4 hidden group-hover:flex space-x-1.5" onclick="event.stopPropagation();">
+                                            <button onclick="openBmEditModal('<%= bm.id %>', '<%= bm.category.replace(/'/g, "\\'") %>', '<%= bm.title.replace(/'/g, "\\'") %>', '<%= bm.url.replace(/'/g, "\\'") %>')" class="p-2 bg-white rounded-lg text-gray-600 hover:bg-blue-100 hover:text-blue-600 transition shadow-sm border border-gray-200" title="수정">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                            </button>
+                                            <button onclick="if(confirm('이 즐겨찾기를 삭제하시겠습니까?')) location.href='/admin/bookmark/delete/<%= bm.id %>'" class="p-2 bg-white rounded-lg text-gray-600 hover:bg-red-100 hover:text-red-600 transition shadow-sm border border-gray-200" title="삭제">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            </button>
+                                        </div>
+                                        <% } %>
+                                    </div>
+                                <% }) %>
+                            </div>
+                        </div>
+                    <% }) %>
+                <% } %>
+            </main>
+
+            <!-- 즐겨찾기 모달 -->
+            <% if (user && user.is_admin) { %>
+            <div id="bm-modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[200]">
+                <div class="bg-white p-8 rounded-2xl shadow-2xl w-[400px]">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 id="bm-modal-title" class="text-xl font-bold text-gray-900">즐겨찾기 추가</h3>
+                        <button onclick="document.getElementById('bm-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-900 font-bold text-xl">✕</button>
+                    </div>
+                    <form id="bm-form" action="/admin/bookmark/add" method="post" class="space-y-4">
+                        <input type="hidden" name="id" id="bm-id">
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-1">분류 (카테고리)</label>
+                            <input type="text" name="category" id="bm-category" placeholder="예: KT, KTcs" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-1">이름</label>
+                            <input type="text" name="title" id="bm-title" placeholder="예: 그룹웨어" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-1">URL 주소</label>
+                            <input type="url" name="url" id="bm-url" placeholder="https://" required class="w-full border border-gray-300 p-2.5 rounded-lg focus:outline-none focus:border-black bg-gray-50">
+                        </div>
+                        <div class="flex justify-end space-x-2 pt-4 border-t border-gray-100 mt-2">
+                            <button type="button" onclick="document.getElementById('bm-modal').classList.add('hidden')" class="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition">취소</button>
+                            <button type="submit" id="bm-submit-btn" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition">추가하기</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <script>
+                function openBmAddModal() {
+                    document.getElementById('bm-modal-title').innerText = '즐겨찾기 추가';
+                    document.getElementById('bm-form').action = '/admin/bookmark/add';
+                    document.getElementById('bm-id').value = '';
+                    document.getElementById('bm-category').value = '';
+                    document.getElementById('bm-title').value = '';
+                    document.getElementById('bm-url').value = '';
+                    document.getElementById('bm-submit-btn').innerText = '추가하기';
+                    document.getElementById('bm-submit-btn').className = 'px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition';
+                    document.getElementById('bm-modal').classList.remove('hidden');
+                }
+                function openBmEditModal(id, category, title, url) {
+                    document.getElementById('bm-modal-title').innerText = '즐겨찾기 수정';
+                    document.getElementById('bm-form').action = '/admin/bookmark/update';
+                    document.getElementById('bm-id').value = id;
+                    document.getElementById('bm-category').value = category;
+                    document.getElementById('bm-title').value = title;
+                    document.getElementById('bm-url').value = url;
+                    document.getElementById('bm-submit-btn').innerText = '저장하기';
+                    document.getElementById('bm-submit-btn').className = 'px-5 py-2.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-black transition';
+                    document.getElementById('bm-modal').classList.remove('hidden');
+                }
+            </script>
+            <% } %>
 
             <% } else if (page === 'admin') { %>
             <header class="bg-white p-4 border-b flex justify-center items-center">
