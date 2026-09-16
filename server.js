@@ -573,16 +573,16 @@ app.get('/bookmarks', async (req, res) => {
 
 app.post('/admin/bookmark/add', async (req, res) => {
     if (!req.session.user || !req.session.user.is_admin) return res.status(403).send("권한이 없어.");
-    const { category, title, url } = req.body;
+    const { category, title, url, order } = req.body;
     let id = 'bm_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-    await Bookmark.create({ id, category, title, url, order: Date.now() });
+    await Bookmark.create({ id, category, title, url, order: parseInt(order) || 0 });
     res.redirect('/bookmarks');
 });
 
 app.post('/admin/bookmark/update', async (req, res) => {
     if (!req.session.user || !req.session.user.is_admin) return res.status(403).send("권한이 없어.");
-    const { id, category, title, url } = req.body;
-    await Bookmark.updateOne({ id }, { category, title, url });
+    const { id, category, title, url, order } = req.body;
+    await Bookmark.updateOne({ id }, { category, title, url, order: parseInt(order) || 0 });
     res.redirect('/bookmarks');
 });
 
@@ -598,7 +598,7 @@ app.post('/api/bookmark/reorder', async (req, res) => {
     try {
         const { reorderedData } = req.body;
         for (let item of reorderedData) {
-            await Bookmark.updateOne({ id: item.id }, { order: item.order });
+            await Bookmark.updateOne({ id: item.id }, { order: item.order, category: item.category });
         }
         res.json({ success: true });
     } catch(e) {
