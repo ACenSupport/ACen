@@ -592,6 +592,21 @@ app.get('/admin/bookmark/delete/:id', async (req, res) => {
     res.redirect('/bookmarks');
 });
 
+
+app.post('/api/bookmark/reorder', async (req, res) => {
+    if (!req.session.user || !req.session.user.is_admin) return res.json({ success: false, error: 'Unauthorized' });
+    try {
+        const { reorderedData } = req.body;
+        for (let item of reorderedData) {
+            await Bookmark.updateOne({ id: item.id }, { order: item.order });
+        }
+        res.json({ success: true });
+    } catch(e) {
+        console.error(e);
+        res.json({ success: false, error: e.message });
+    }
+});
+
 app.get('/admin', async (req, res) => {
     if (!req.session.user || !req.session.user.is_admin) return res.send("<script>alert('관리자만 접근 가능합니다.'); history.back();</script>");
     let users = await User.find().lean();
