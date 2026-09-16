@@ -556,13 +556,15 @@ app.post('/update_leave', async (req, res) => {
 
 app.get('/bookmarks', async (req, res) => {
     if (!req.session.user) return res.redirect('/');
+    let users = await User.find().lean();
+    let team_members = users.map(u => u.name);
     let sidebar_info = await Sidebar.findOne({key: 'sidebar'}).lean() || { name: '우리팀 복무관리', logo_url: null, emoji: null };
     let bookmarks = await Bookmark.find().lean();
     bookmarks.sort((a,b) => {
         if(a.category === b.category) return a.title.localeCompare(b.title);
         return a.category.localeCompare(b.category);
     });
-    res.render('index', { page: 'bookmarks', user: req.session.user, sidebar_info, bookmarks, holidays });
+    res.render('index', { page: 'bookmarks', user: req.session.user, sidebar_info, bookmarks, holidays, team_members });
 });
 
 app.post('/admin/bookmark/add', async (req, res) => {
