@@ -759,7 +759,7 @@
                                         </div>
                                         
                                         <% if (user && user.is_admin) { %>
-                                        <div class="absolute top-4 right-4 hidden group-hover:flex space-x-1.5" onclick="event.stopPropagation();">
+                                        <div class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 flex space-x-1.5 transition-opacity duration-200" onclick="event.stopPropagation();">
                                             <button class="drag-handle cursor-move p-2 bg-white rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-800 transition shadow-sm border border-gray-200" title="드래그하여 순서 변경">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16" /></svg>
                                             </button>
@@ -837,6 +837,44 @@
                     document.getElementById('bm-submit-btn').className = 'px-5 py-2.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-black transition';
                     document.getElementById('bm-modal').classList.remove('hidden');
                 }
+            </script>
+            <% } %>
+
+            
+            <% if (user && user.is_admin) { %>
+            <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    const lists = document.querySelectorAll('.sortable-list');
+                    lists.forEach(list => {
+                        new Sortable(list, {
+                            animation: 150,
+                            handle: '.drag-handle', // drag-handle 버튼을 잡고 끌 때만 이동
+                            ghostClass: 'opacity-50', // 이동 중인 카드의 투명도
+                            onEnd: function (evt) {
+                                let items = Array.from(list.children);
+                                let reorderedData = items.map((item, index) => {
+                                    return {
+                                        id: item.getAttribute('data-id'),
+                                        order: index + 1
+                                    };
+                                });
+                                
+                                fetch('/api/bookmark/reorder', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ reorderedData })
+                                }).then(res => res.json()).then(data => {
+                                    if(!data.success) {
+                                        alert('순서 저장에 실패했습니다: ' + data.error);
+                                    }
+                                }).catch(err => {
+                                    alert('서버와 통신 중 오류가 발생했습니다.');
+                                });
+                            },
+                        });
+                    });
+                });
             </script>
             <% } %>
 
