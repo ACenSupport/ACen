@@ -534,8 +534,7 @@
                                 
                                 if (isGrouped) {
                                     if (!isAdmin) {
-                                        alert('여러 명의 일정이 묶인 그룹 항목은 관리자만 삭제할 수 있습니다.
-개별 삭제가 필요하다면 관리자에게 문의하세요.');
+                                        alert('여러 명의 일정이 묶인 그룹 항목은 관리자만 삭제할 수 있습니다.\n개별 수정/삭제가 필요하다면 관리자에게 문의하세요.');
                                         return;
                                     }
                                     openEditModal(info.event, info.dateStr);
